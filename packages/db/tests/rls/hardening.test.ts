@@ -306,7 +306,7 @@ describe('listing status machine', () => {
         .from('listings')
         .update({ status })
         .eq('id', sold.listingId);
-      expect(error?.message).toMatch(/can't go from sold/);
+      expect(error?.message).toMatch(/sold listing can't be changed/);
     }
     // ...so the "only drafts / no published listing" delete guards can't be dodged.
     expect(
@@ -318,6 +318,22 @@ describe('listing status machine', () => {
       (await seller.client.from('listings').update({ status: 'draft' }).eq('id', live.listingId))
         .error,
     ).not.toBeNull();
+  });
+
+  it('sold and removed listings are frozen (content, photos, uploads)', async () => {
+    const { listingId } = await createListing(seller);
+    await seller.client.from('listings').update({ status: 'sold' }).eq('id', listingId);
+    const edit = await seller.client
+      .from('listings')
+      .update({ description: 'tampered' })
+      .eq('id', listingId);
+    expect(edit.error?.message).toMatch(/can't be changed/);
+    const reserve = await seller.client.rpc('reserve_upload', {
+      p_bucket: 'listing-photos',
+      p_target_id: listingId,
+      p_content_type: 'image/png',
+    });
+    expect(reserve.error?.code).toBe('42501');
   });
 
   it('admin takedowns are final and admins cannot rewrite listings', async () => {

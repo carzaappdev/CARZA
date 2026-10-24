@@ -115,6 +115,12 @@ begin
   -- `draft` once published. This keeps sales history and moderated/reported listings intact, and means
   -- "only drafts can be deleted" can't be dodged by flipping the status first.
   -- App admins may remove anything (via admin_remove_listing).
+  -- Sold and removed listings are frozen (content + status): they're sales history and moderation evidence.
+  if tg_op = 'UPDATE' and old.status in ('sold', 'removed')
+     and not (old.status = 'sold' and new.status = 'removed' and private.is_admin()) then
+    raise exception 'A % listing can''t be changed.', old.status using errcode = 'P0001';
+  end if;
+
   if tg_op = 'UPDATE' and new.status is distinct from old.status
      and not (new.status = 'removed' and private.is_admin())
      and not (old.status, new.status) in (
@@ -160,6 +166,7 @@ as $$
   select exists (
     select 1 from public.listings l
     where l.id = p_listing_id
+      and l.status not in ('sold', 'removed') -- frozen: no photo/location/storage changes
       and (
         l.seller_user_id = (select auth.uid())
         or (l.seller_dealership_id is not null and private.can_act_for_dealership(l.seller_dealership_id))
@@ -177,7 +184,7 @@ as $$
 begin
   update public.listings
   set location = new.location, city = new.city, region = new.region
-  where seller_dealership_id = new.id;
+  where seller_dealership_id = new.id and status not in ('sold', 'removed');
   return null;
 end;
 $$;

@@ -17,6 +17,7 @@ export const anon = (): TypedClient => createClient<Database>(url, publishableKe
 export type TestUser = { id: string; email: string; client: TypedClient };
 
 const createdUsers: string[] = [];
+const uploadedObjects: { bucket: string; path: string }[] = [];
 const createdDealerships: string[] = [];
 
 export async function createUser(label = 'user', email?: string): Promise<TestUser> {
@@ -122,6 +123,8 @@ export async function createListing(
 }
 
 export async function cleanup() {
+  for (const { bucket, path } of uploadedObjects.splice(0))
+    await admin.storage.from(bucket).remove([path]);
   // Dealerships first: the "keep one owner" guard blocks deleting a user who is a dealership's last owner.
   if (createdDealerships.length)
     await admin.from('dealerships').delete().in('id', createdDealerships.splice(0));
@@ -149,5 +152,6 @@ export async function uploadViaReservation(
   const upload = await user.client.storage
     .from(bucket)
     .uploadToSignedUrl(path, signed.data.token, file, { contentType: file.type });
+  if (!upload.error) uploadedObjects.push({ bucket, path });
   return { path, error: upload.error };
 }
