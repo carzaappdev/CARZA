@@ -9,6 +9,7 @@ import {
   createListing,
   createUser,
   type TestUser,
+  uploadViaReservation,
 } from './helpers';
 
 let seller: TestUser;
@@ -190,32 +191,29 @@ describe('dealer listings', () => {
 describe('listing_photos + storage', () => {
   const png = new Blob([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], { type: 'image/png' });
 
-  it('sellers can upload into their listing folder; others cannot', async () => {
+  it('direct client uploads are refused (uploads go through reserve_upload + a signed URL)', async () => {
     const { listingId } = await createListing(seller2);
-    const path = `${listingId}/${randomUUID()}.png`;
-    const own = await seller2.client.storage
-      .from('listing-photos')
-      .upload(path, png, { contentType: 'image/png' });
-    expect(own.error).toBeNull();
-
-    const intruder = await other.client.storage
+    const direct = await seller2.client.storage
       .from('listing-photos')
       .upload(`${listingId}/${randomUUID()}.png`, png, { contentType: 'image/png' });
-    expect(intruder.error).not.toBeNull();
+    expect(direct.error).not.toBeNull();
+  });
 
-    const overwrite = await other.client.storage
-      .from('listing-photos')
-      .upload(path, png, { upsert: true, contentType: 'image/png' });
-    expect(overwrite.error).not.toBeNull();
+  it('sellers can upload to their listing; others cannot reserve a slot there', async () => {
+    const { listingId } = await createListing(seller2);
+    const own = await uploadViaReservation(seller2, 'listing-photos', listingId, png);
+    expect(own.error).toBeNull();
+    expect(own.path).toMatch(new RegExp(`^${listingId}/[0-9a-f-]{36}\\.png$`));
+
+    const intruder = await uploadViaReservation(other, 'listing-photos', listingId, png);
+    expect((intruder.error as { code?: string }).code).toBe('42501');
   });
 
   it('rejects disallowed file types', async () => {
     const { listingId } = await createListing(seller2);
     const svg = new Blob(['<svg/>'], { type: 'image/svg+xml' });
-    const { error } = await seller2.client.storage
-      .from('listing-photos')
-      .upload(`${listingId}/${randomUUID()}.svg`, svg, { contentType: 'image/svg+xml' });
-    expect(error).not.toBeNull();
+    const { error } = await uploadViaReservation(seller2, 'listing-photos', listingId, svg);
+    expect((error as { code?: string }).code).toBe('22023');
   });
 
   it('photo rows must point inside the listing folder and belong to the seller', async () => {
@@ -225,21 +223,21 @@ describe('listing_photos + storage', () => {
       .insert({ listing_id: listingId, storage_path: `${randomUUID()}/x.webp`, position: 0 });
     expect(outside.error?.code).toBe('23514');
 
+    const traversal = await seller2.client
+      .from('listing_photos')
+      .insert({ listing_id: listingId, storage_path: `${listingId}/../x.webp`, position: 0 });
+    expect(traversal.error?.code).toBe('23514');
+
     const byOther = await other.client
       .from('listing_photos')
       .insert({ listing_id: listingId, storage_path: `${listingId}/x.webp`, position: 0 });
     expect(byOther.error?.code).toBe('42501');
   });
 
-  it('avatars can only be uploaded into your own folder', async () => {
-    const own = await seller2.client.storage
-      .from('avatars')
-      .upload(`${seller2.id}/a.png`, png, { contentType: 'image/png' });
-    expect(own.error).toBeNull();
-    const notOwn = await seller2.client.storage
-      .from('avatars')
-      .upload(`${other.id}/a.png`, png, { contentType: 'image/png' });
-    expect(notOwn.error).not.toBeNull();
+  it('avatars can only be reserved for your own folder', async () => {
+    expect((await uploadViaReservation(seller2, 'avatars', seller2.id, png)).error).toBeNull();
+    const notOwn = await uploadViaReservation(seller2, 'avatars', other.id, png);
+    expect((notOwn.error as { code?: string }).code).toBe('42501');
   });
 });
 

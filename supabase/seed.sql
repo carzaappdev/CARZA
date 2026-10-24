@@ -11,6 +11,10 @@
 -- generated relative to it (dealerships, listings, users).
 -- =============================================================================
 
+-- Everything runs in ONE transaction: if the guard below fails, nothing after it can take effect, even
+-- when run with plain `psql -f` (no ON_ERROR_STOP).
+begin;
+
 -- Hard stop: refuse to run anywhere but a fresh LOCAL stack. The local CLI stack uses the well-known
 -- dev JWT secret; hosted projects never do. Seeding creates a known-password admin, so this must not
 -- run against carza-dev or carza-prod (e.g. via `db push --include-seed`).
@@ -423,3 +427,5 @@ select pg_temp.sid('buyer2'), 'listing', pg_temp.sid('listing-' || s.n), 'mislea
   'Photos don''t match the trim listed.'
 from seed_listings s where s.is_dealer and s.seller = 'metro' and s.status = 'active'
 order by s.n desc limit 1;
+
+commit;

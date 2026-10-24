@@ -82,19 +82,3 @@ $$;
 
 revoke all on function private.enforce_rate_limit(text, uuid) from public, anon, authenticated;
 
--- Boolean wrapper so storage policies can apply a limit inside a WITH CHECK expression.
-create function private.allow_upload(p_bucket text)
-returns boolean
-language plpgsql
-volatile
-security definer
-set search_path = ''
-as $$
-begin
-  perform private.enforce_rate_limit(p_bucket);
-  return true;
-end;
-$$;
-
-revoke all on function private.allow_upload(text) from public, anon;
-grant execute on function private.allow_upload(text) to authenticated;

@@ -111,9 +111,22 @@ begin
     new.location := private.approximate_point(new.location);
   end if;
 
-  -- (Re)publishing resets the date so a relisted car doesn't sort by its original date.
-  if new.status = 'active'
-     and (new.published_at is null or (tg_op = 'UPDATE' and old.status not in ('active', 'pending'))) then
+  -- Status machine. `sold` and `removed` are final (relisting = a new listing), and nothing goes back to
+  -- `draft` once published. This keeps sales history and moderated/reported listings intact, and means
+  -- "only drafts can be deleted" can't be dodged by flipping the status first.
+  -- App admins may remove anything (via admin_remove_listing).
+  if tg_op = 'UPDATE' and new.status is distinct from old.status
+     and not (new.status = 'removed' and private.is_admin())
+     and not (old.status, new.status) in (
+       ('draft', 'active'), ('draft', 'removed'),
+       ('active', 'pending'), ('active', 'sold'), ('active', 'removed'),
+       ('pending', 'active'), ('pending', 'sold'), ('pending', 'removed')
+     )
+  then
+    raise exception 'A listing can''t go from % to %.', old.status, new.status using errcode = 'P0001';
+  end if;
+
+  if new.status = 'active' and new.published_at is null then
     new.published_at := now();
   end if;
   if new.status = 'sold' and (tg_op = 'INSERT' or old.status <> 'sold') then
@@ -204,7 +217,8 @@ create table public.listing_photos (
   width integer check (width between 1 and 20000),
   height integer check (height between 1 and 20000),
   created_at timestamptz not null default now(),
-  constraint listing_photos_path_in_listing_folder check (storage_path like listing_id::text || '/%'),
+  constraint listing_photos_path_in_listing_folder
+    check (storage_path like listing_id::text || '/%' and position('..' in storage_path) = 0),
   constraint listing_photos_position_uniq unique (listing_id, position) deferrable initially deferred
 );
 
@@ -321,13 +335,12 @@ create policy "Sellers create listings" on public.listings
     )
   );
 
--- Sellers edit their own; app admins can moderate (e.g. status = 'removed' after a scam report).
-create policy "Sellers and admins update listings" on public.listings
+-- Admin moderation goes through admin_remove_listing(), not this policy, so admins can't rewrite listings.
+create policy "Sellers update their listings" on public.listings
   for update to authenticated
   using (
     seller_user_id = (select auth.uid())
     or (seller_dealership_id is not null and private.can_act_for_dealership(seller_dealership_id))
-    or (select private.is_admin())
   )
   with check (
     (seller_user_id = (select auth.uid()) and seller_dealership_id is null)
@@ -336,7 +349,6 @@ create policy "Sellers and admins update listings" on public.listings
       and private.can_act_for_dealership(seller_dealership_id)
       and (status in ('draft', 'removed') or private.is_verified_dealership(seller_dealership_id))
     )
-    or (select private.is_admin())
   );
 
 create policy "Sellers delete draft listings" on public.listings
@@ -393,3 +405,26 @@ create policy "Users save visible listings" on public.saved_listings
   );
 create policy "Users unsave listings" on public.saved_listings
   for delete to authenticated using (user_id = (select auth.uid()));
+
+-- ---------------------------------------------------------------------------
+-- Moderation
+-- ---------------------------------------------------------------------------
+create function public.admin_remove_listing(p_listing_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not private.is_admin() then
+    raise exception 'Only admins can moderate listings' using errcode = '42501';
+  end if;
+  update public.listings set status = 'removed' where id = p_listing_id;
+  if not found then
+    raise exception 'Listing not found' using errcode = 'P0002';
+  end if;
+end;
+$$;
+
+revoke all on function public.admin_remove_listing(uuid) from public, anon;
+grant execute on function public.admin_remove_listing(uuid) to authenticated;

@@ -127,3 +127,27 @@ export async function cleanup() {
     await admin.from('dealerships').delete().in('id', createdDealerships.splice(0));
   for (const id of createdUsers.splice(0)) await admin.auth.admin.deleteUser(id);
 }
+
+/**
+ * The real upload flow: reserve a path (permission + rate limit, as the user), have the SERVER sign an
+ * upload URL for exactly that path (secret key), then upload from the client with the token.
+ */
+export async function uploadViaReservation(
+  user: TestUser,
+  bucket: 'listing-photos' | 'avatars' | 'dealership-logos',
+  targetId: string,
+  file: Blob,
+) {
+  const { data: path, error } = await user.client.rpc('reserve_upload', {
+    p_bucket: bucket,
+    p_target_id: targetId,
+    p_content_type: file.type,
+  });
+  if (error || !path) return { path: null, error: error ?? new Error('no path') };
+  const signed = await admin.storage.from(bucket).createSignedUploadUrl(path);
+  if (signed.error) return { path, error: signed.error };
+  const upload = await user.client.storage
+    .from(bucket)
+    .uploadToSignedUrl(path, signed.data.token, file, { contentType: file.type });
+  return { path, error: upload.error };
+}

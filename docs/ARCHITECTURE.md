@@ -519,7 +519,7 @@ Steps the wrapper performs, in order:
 
 ### 4.6 Images
 
-- Uploads: the client resizes to ≤ 2048px long edge and re-encodes to WebP (canvas, with no library) → asks a Server Action for an upload path (it checks `can_manage_listing`, count < 30, and rate limit) → uploads directly to Storage with the browser client (Storage RLS enforces the path) → a Server Action records `listing_photos` rows.
+- Uploads: the client resizes to ≤ 2048px long edge and re-encodes to WebP (canvas, no library) → a Server Action calls `reserve_upload(bucket, target_id, content_type)` **as the user** (it checks permission, applies the DB rate limit, and returns a server-generated path) → the server signs an upload URL for exactly that path (`createSignedUploadUrl`, secret key, server-only) → the browser uploads with the token → a Server Action records the `listing_photos` row. Clients have **no** direct INSERT on storage: the Storage API evaluates insert policies in a rolled-back savepoint, so a rate limit there never sticks.
 - Display: `next/image` with `remotePatterns` restricted to `<ref>.supabase.co/storage/v1/object/public/**` (and `127.0.0.1:54321` in dev). We use Next's optimizer rather than Supabase image transforms (those need the Pro plan). This is a cost check for later.
 - Limits (shared constants): 10 MB raw input, jpeg/png/webp/heic-from-iOS (iOS Safari hands over JPEG), 30 photos per listing, 2 MB for avatars/logos.
 
@@ -692,12 +692,12 @@ Rejected alternatives: Prisma/Drizzle (they'd duplicate RLS-aware access; supaba
 ### Added after the stage 2 security audit + code review
 
 16. **Suspension actually suspends.** `private.can_act_for_dealership` (member **and** dealership is `pending`/`verified`) guards every dealer-side _write_: listings, vehicles, messages, test-drive RPCs, invites, logo uploads. Suspended or rejected dealers keep read access to their own data.
-17. **Re-verification on identity change.** Changing a verified dealership's name, website, phone or address puts it back to `pending` (its listings drop out of search until you re-verify). Description, email, hours and logo are free to edit.
+17. **Re-verification on identity change.** Changing a verified dealership's name, website, phone, email, logo or address puts it back to `pending`. Its listings drop out of search and open test drives are cancelled until you re-verify. Description and timezone are free to edit.
 18. **Account deletion is never blocked.** If the deleted user was a dealership's last owner, the dealership is set to `suspended` for an admin to resolve, instead of the deletion failing.
 19. **Vehicles with a published listing can't be deleted** (that would cascade away listings and test-drive history). Ownership columns and ids aren't client-writable.
 20. **Private-seller approximation lives in the database** (`private.approximate_point`, applied by the listings trigger). The client can't publish an exact point even by mistake.
 21. **Storage:** owner-scoped SELECT policies (needed for delete/replace to work) and upload rate limits (`photo_upload`, `profile_image_upload`) in the storage INSERT policies.
-22. **Open test drives are auto-cancelled** (requester notified) when a listing stops being active. Relisting resets `published_at`.
+22. **Listing status machine (DB-enforced):** draft→active/removed, active↔pending, active/pending→sold/removed. `sold` and `removed` are final (relisting = a new listing), and nothing returns to `draft`. Admins moderate only through `admin_remove_listing()`. They can't edit listings. Open test drives are auto-cancelled (requester notified) when a listing leaves active/pending or the dealership loses verification.
 23. **Dealer read state is shared.** Reading a lead clears the unread badge for the whole team.
 24. **Seed refuses to run** anywhere except an empty local stack (it checks for the local-only dev JWT secret), because it creates a known-password admin.
 25. **Accepted:** consumers can see which staff member's profile sent a dealer message (`messages.sender_id`). The UI labels dealer-side messages with the dealership name. Masking would need a view/RPC; revisit if dealers ask.

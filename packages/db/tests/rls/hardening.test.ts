@@ -11,6 +11,7 @@ import {
   createListing,
   createUser,
   type TestUser,
+  uploadViaReservation,
 } from './helpers';
 
 let owner: TestUser;
@@ -261,54 +262,152 @@ describe('dealer inbox read state', () => {
   });
 });
 
-describe('storage cleanup', () => {
-  it('sellers can delete their own photos (so they disappear from the CDN)', async () => {
+describe('storage', () => {
+  const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' });
+
+  it('sellers can delete their own photos (so they disappear from the CDN); others cannot', async () => {
     const { listingId } = await createListing(seller, { status: 'draft' });
-    const path = `${listingId}/${randomUUID()}.png`;
-    const png = new Blob([new Uint8Array([137, 80, 78, 71])], { type: 'image/png' });
-    expect(
-      (
-        await seller.client.storage
-          .from('listing-photos')
-          .upload(path, png, { contentType: 'image/png' })
-      ).error,
-    ).toBeNull();
-    const { data, error } = await seller.client.storage.from('listing-photos').remove([path]);
-    expect(error).toBeNull();
-    expect(data).toHaveLength(1);
-    expect((await buyer.client.storage.from('listing-photos').remove([path])).data ?? []).toEqual(
+    const { path, error: upErr } = await uploadViaReservation(
+      seller,
+      'listing-photos',
+      listingId,
+      png,
+    );
+    expect(upErr).toBeNull();
+    expect((await buyer.client.storage.from('listing-photos').remove([path!])).data ?? []).toEqual(
       [],
     );
+    const { data, error } = await seller.client.storage.from('listing-photos').remove([path!]);
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
+  });
+
+  it('upload reservations are rate limited (and the counter sticks)', async () => {
+    const u = await createUser('uploader');
+    let code: string | undefined;
+    for (let i = 0; i < 21 && !code; i++) {
+      const { error } = await u.client.rpc('reserve_upload', {
+        p_bucket: 'avatars',
+        p_target_id: u.id,
+        p_content_type: 'image/png',
+      });
+      code = error?.code;
+    }
+    expect(code).toBe('CZ429');
   });
 });
 
-describe('listing lifecycle', () => {
-  it('relisting a sold car resets its publish date', async () => {
-    const { listingId } = await createListing(seller);
-    await admin
-      .from('listings')
-      .update({ published_at: '2020-01-01T00:00:00Z' })
-      .eq('id', listingId);
-    await seller.client.from('listings').update({ status: 'sold' }).eq('id', listingId);
-    await seller.client.from('listings').update({ status: 'active' }).eq('id', listingId);
-    const { data } = await seller.client
-      .from('listings')
-      .select('published_at, sold_at')
-      .eq('id', listingId)
-      .single();
-    expect(new Date(data!.published_at!).getFullYear()).toBeGreaterThan(2020);
-    expect(data!.sold_at).toBeNull();
+describe('listing status machine', () => {
+  it('sold and removed are final, and nothing goes back to draft', async () => {
+    const sold = await createListing(seller);
+    await seller.client.from('listings').update({ status: 'sold' }).eq('id', sold.listingId);
+    for (const status of ['active', 'draft'] as const) {
+      const { error } = await seller.client
+        .from('listings')
+        .update({ status })
+        .eq('id', sold.listingId);
+      expect(error?.message).toMatch(/can't go from sold/);
+    }
+    // ...so the "only drafts / no published listing" delete guards can't be dodged.
+    expect(
+      (await seller.client.from('vehicles').delete().eq('id', sold.vehicleId).select()).data,
+    ).toEqual([]);
+
+    const live = await createListing(seller);
+    expect(
+      (await seller.client.from('listings').update({ status: 'draft' }).eq('id', live.listingId))
+        .error,
+    ).not.toBeNull();
   });
 
-  it('admins can take down a listing', async () => {
+  it('admin takedowns are final and admins cannot rewrite listings', async () => {
     const appAdmin = await createUser('mod');
     await admin.from('profiles').update({ role: 'admin' }).eq('id', appAdmin.id);
     const { listingId } = await createListing(seller);
-    const { data } = await appAdmin.client
+
+    const rewrite = await appAdmin.client
       .from('listings')
-      .update({ status: 'removed' })
+      .update({ price_cents: 100 })
       .eq('id', listingId)
-      .select('status');
-    expect(data?.[0]?.status).toBe('removed');
+      .select();
+    expect(rewrite.data).toEqual([]);
+
+    expect(
+      (await appAdmin.client.rpc('admin_remove_listing', { p_listing_id: listingId })).error,
+    ).toBeNull();
+    const undo = await seller.client
+      .from('listings')
+      .update({ status: 'active' })
+      .eq('id', listingId);
+    expect(undo.error).not.toBeNull();
+    expect(
+      (await seller.client.from('listings').delete().eq('id', listingId).select()).data,
+    ).toEqual([]);
+
+    expect(
+      (await seller.client.rpc('admin_remove_listing', { p_listing_id: listingId })).error?.code,
+    ).toBe('42501');
+  });
+});
+
+describe('dealership state changes', () => {
+  it('email or logo changes also trigger re-verification', async () => {
+    const o = await createUser('eowner');
+    const id = await createDealership(o);
+    await o.client.from('dealerships').update({ email: 'payments@evil.test' }).eq('id', id);
+    expect(
+      (await admin.from('dealerships').select('verification_status').eq('id', id).single()).data
+        ?.verification_status,
+    ).toBe('pending');
+  });
+
+  it('losing verification cancels open test drives', async () => {
+    const o = await createUser('cowner');
+    const b = await createUser('cbuyer');
+    const id = await createDealership(o);
+    const { listingId } = await createListing(o, { dealershipId: id });
+    const { data: driveId } = await b.client.rpc('request_test_drive', {
+      p_listing_id: listingId,
+      p_proposed_times: [new Date(Date.now() + 30 * 3600_000).toISOString()],
+    });
+    await o.client.from('dealerships').update({ name: 'Renamed Motors' }).eq('id', id); // → pending
+    const { data } = await b.client
+      .from('test_drive_requests')
+      .select('status')
+      .eq('id', driveId!)
+      .single();
+    expect(data?.status).toBe('cancelled');
+  });
+
+  it("suspended owners can't manage the team", async () => {
+    const o = await createUser('mowner');
+    const s = await createUser('mstaff');
+    const id = await createDealership(o);
+    await addMember(id, s, 'staff');
+    await setStatus(id, 'suspended');
+    const { data } = await o.client
+      .from('dealership_members')
+      .update({ role: 'admin' })
+      .eq('dealership_id', id)
+      .eq('user_id', s.id)
+      .select();
+    expect(data).toEqual([]);
+  });
+
+  it("an inviter's open invitations are deleted with their account", async () => {
+    const leaving = await createUser('gone');
+    await addMember(dealerId, leaving, 'admin');
+    await leaving.client.rpc('create_dealership_invitation', {
+      p_dealership_id: dealerId,
+      p_email: `accomplice-${randomUUID().slice(0, 6)}@rls.test`,
+      p_role: 'admin',
+    });
+    await admin.auth.admin.deleteUser(leaving.id);
+    const { data } = await admin
+      .from('dealership_invitations')
+      .select('id')
+      .is('invited_by', null)
+      .is('accepted_at', null);
+    expect(data).toEqual([]);
   });
 });

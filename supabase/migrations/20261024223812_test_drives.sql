@@ -250,8 +250,38 @@ $$;
 create trigger listings_cancel_test_drives
   after update of status on public.listings
   for each row
-  when (old.status = 'active' and new.status <> 'active')
+  when (old.status in ('active', 'pending') and new.status not in ('active', 'pending'))
   execute function private.cancel_test_drives_for_inactive_listing();
+
+-- When a dealership stops being verified (suspended, rejected, or back to pending after an identity change),
+-- its open test drives are cancelled and requesters notified. AFTER UPDATE (not "of verification_status") so
+-- it also catches the status flip made by the re-verification trigger.
+create function private.cancel_test_drives_for_unverified_dealership()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_request public.test_drive_requests;
+begin
+  for v_request in
+    update public.test_drive_requests
+    set status = 'cancelled', dealer_note = coalesce(dealer_note, 'The dealership is temporarily unavailable.')
+    where dealership_id = new.id and status in ('requested', 'confirmed')
+    returning *
+  loop
+    perform private.test_drive_notify(v_request, 'test_drive_cancelled', false);
+  end loop;
+  return null;
+end;
+$$;
+
+create trigger dealerships_cancel_test_drives
+  after update on public.dealerships
+  for each row
+  when (old.verification_status = 'verified' and new.verification_status <> 'verified')
+  execute function private.cancel_test_drives_for_unverified_dealership();
 
 revoke all on function public.request_test_drive(uuid, timestamptz[], text) from public, anon;
 revoke all on function public.respond_test_drive(uuid, boolean, timestamptz, text) from public, anon;

@@ -876,6 +876,7 @@ export type Database = {
     };
     Functions: {
       accept_dealership_invitation: { Args: { p_token: string }; Returns: string };
+      admin_remove_listing: { Args: { p_listing_id: string }; Returns: undefined };
       apply_for_dealership: {
         Args: {
           p_address_line1: string;
@@ -907,6 +908,10 @@ export type Database = {
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined };
       request_test_drive: {
         Args: { p_listing_id: string; p_note?: string; p_proposed_times: string[] };
+        Returns: string;
+      };
+      reserve_upload: {
+        Args: { p_bucket: string; p_content_type: string; p_target_id: string };
         Returns: string;
       };
       respond_test_drive: {

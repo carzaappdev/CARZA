@@ -46,7 +46,8 @@ create table public.dealership_invitations (
   dealership_id uuid not null references public.dealerships (id) on delete cascade,
   email text not null check (email = lower(email) and email ~ '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
   role public.dealer_role not null check (role <> 'owner'),
-  invited_by uuid references public.profiles (id) on delete set null,
+  -- Cascade: an inviter's open invitations die with their account (no orphaned admin invites).
+  invited_by uuid references public.profiles (id) on delete cascade,
   -- sha256 of the token; the plain token only ever exists in the invite email.
   token_hash text not null unique,
   expires_at timestamptz not null default now() + interval '7 days',
@@ -184,11 +185,11 @@ as $$
 begin
   if old.verification_status = 'verified'
      and new.verification_status = 'verified'
-     and (new.name, new.website, new.phone, new.address_line1, new.address_line2, new.city, new.region,
-          new.postal_code, extensions.st_astext(new.location::extensions.geometry))
+     and (new.name, new.website, new.phone, new.email, new.logo_path, new.address_line1, new.address_line2,
+          new.city, new.region, new.postal_code, extensions.st_astext(new.location::extensions.geometry))
        is distinct from
-         (old.name, old.website, old.phone, old.address_line1, old.address_line2, old.city, old.region,
-          old.postal_code, extensions.st_astext(old.location::extensions.geometry))
+         (old.name, old.website, old.phone, old.email, old.logo_path, old.address_line1, old.address_line2,
+          old.city, old.region, old.postal_code, extensions.st_astext(old.location::extensions.geometry))
   then
     new.verification_status := 'pending';
     new.verified_at := null;
@@ -280,20 +281,20 @@ create policy "Members see their team" on public.dealership_members
 create policy "Owners and admins change roles" on public.dealership_members
   for update to authenticated
   using (
-    private.is_dealership_member(dealership_id, 'owner')
-    or (private.is_dealership_member(dealership_id, 'admin') and role <> 'owner')
+    private.can_act_for_dealership(dealership_id, 'owner')
+    or (private.can_act_for_dealership(dealership_id, 'admin') and role <> 'owner')
   )
   with check (
-    private.is_dealership_member(dealership_id, 'owner')
-    or (private.is_dealership_member(dealership_id, 'admin') and role <> 'owner')
+    private.can_act_for_dealership(dealership_id, 'owner')
+    or (private.can_act_for_dealership(dealership_id, 'admin') and role <> 'owner')
   );
 
 create policy "Owners/admins remove members; anyone can leave" on public.dealership_members
   for delete to authenticated
   using (
     user_id = (select auth.uid())
-    or private.is_dealership_member(dealership_id, 'owner')
-    or (private.is_dealership_member(dealership_id, 'admin') and role <> 'owner')
+    or private.can_act_for_dealership(dealership_id, 'owner')
+    or (private.can_act_for_dealership(dealership_id, 'admin') and role <> 'owner')
   );
 -- Insert only via apply_for_dealership() / accept_dealership_invitation().
 
@@ -444,11 +445,13 @@ begin
 
   select lower(u.email) into v_email from auth.users u where u.id = v_uid and u.email_confirmed_at is not null;
 
-  select * into v_invite from public.dealership_invitations i
+  select i.* into v_invite from public.dealership_invitations i
+  join public.dealerships d on d.id = i.dealership_id
   where i.token_hash = encode(sha256(convert_to(p_token, 'UTF8')), 'hex')
     and i.accepted_at is null
     and i.expires_at > now()
-  for update;
+    and d.verification_status in ('pending', 'verified')
+  for update of i;
 
   -- Same error for "no such token" and "wrong account" so tokens can't be probed.
   if v_invite.id is null or v_email is null or v_invite.email <> v_email then
