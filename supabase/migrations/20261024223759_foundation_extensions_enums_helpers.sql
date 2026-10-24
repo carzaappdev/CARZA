@@ -98,3 +98,17 @@ set search_path = ''
 as $$
   select trim(both '-' from regexp_replace(lower(regexp_replace(value, '[''’]', '', 'g')), '[^a-z0-9]+', '-', 'g'));
 $$;
+
+-- Public, approximate point for private sellers: the center of a ~1.5 km grid cell. Deterministic, so
+-- re-saving the same address always lands in the same cell (no averaging attack across edits).
+create function private.approximate_point(p extensions.geography)
+returns extensions.geography
+language sql
+immutable
+set search_path = ''
+as $$
+  select extensions.st_setsrid(extensions.st_makepoint(
+    round((extensions.st_x(p::extensions.geometry) / 0.015)::numeric) * 0.015,
+    round((extensions.st_y(p::extensions.geometry) / 0.0135)::numeric) * 0.0135
+  ), 4326)::extensions.geography;
+$$;

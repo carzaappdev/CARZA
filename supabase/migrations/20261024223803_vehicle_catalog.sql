@@ -22,6 +22,7 @@ alter table public.vehicle_models enable row level security;
 
 revoke all on public.vehicle_makes, public.vehicle_models from anon, authenticated;
 grant select on public.vehicle_makes, public.vehicle_models to anon, authenticated;
+revoke all on sequence public.vehicle_makes_id_seq, public.vehicle_models_id_seq from anon, authenticated;
 
 create policy "Anyone can read makes" on public.vehicle_makes for select to anon, authenticated using (true);
 create policy "Anyone can read models" on public.vehicle_models for select to anon, authenticated using (true);

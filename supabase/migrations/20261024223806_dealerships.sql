@@ -16,7 +16,7 @@ create table public.dealerships (
   location extensions.geography(point, 4326) not null,
   -- IANA timezone; test drive times are shown in this zone.
   timezone text not null check (private.is_valid_timezone(timezone)),
-  logo_path text check (char_length(logo_path) <= 300),
+  logo_path text check (char_length(logo_path) <= 300 and logo_path like id::text || '/%' and position('..' in logo_path) = 0),
   verification_status public.verification_status not null default 'pending',
   verified_at timestamptz,
   created_by uuid references public.profiles (id) on delete set null,
@@ -92,15 +92,40 @@ as $$
   );
 $$;
 
+-- Write-side check: a member of a dealership that is allowed to operate. Suspended or rejected dealerships
+-- keep read access to their data but can't message, take test drives, invite, or change inventory.
+create function private.can_act_for_dealership(
+  p_dealership_id uuid,
+  p_min_role public.dealer_role default 'staff'
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select private.is_dealership_member(p_dealership_id, p_min_role)
+    and exists (
+      select 1 from public.dealerships d
+      where d.id = p_dealership_id and d.verification_status in ('pending', 'verified')
+    );
+$$;
+
 revoke all on function private.is_dealership_member(uuid, public.dealer_role) from public;
 revoke all on function private.is_verified_dealership(uuid) from public;
+revoke all on function private.can_act_for_dealership(uuid, public.dealer_role) from public;
 grant execute on function private.is_dealership_member(uuid, public.dealer_role) to anon, authenticated;
 grant execute on function private.is_verified_dealership(uuid) to anon, authenticated;
+grant execute on function private.can_act_for_dealership(uuid, public.dealer_role) to authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Guards
 -- ---------------------------------------------------------------------------
--- A dealership must always keep at least one owner (unless the dealership itself is being deleted).
+-- A dealership must always keep at least one owner. Exceptions:
+--   * the dealership itself is being deleted (cascade), and
+--   * the owner's account is being deleted (cascade from profiles): account deletion must never be
+--     blocked, so the dealership is suspended instead (listings hidden, staff can't act) for an admin to
+--     resolve.
 create function private.keep_one_owner()
 returns trigger
 language plpgsql
@@ -108,20 +133,73 @@ security definer
 set search_path = ''
 as $$
 begin
-  if old.role = 'owner'
-     and (tg_op = 'DELETE' or new.role <> 'owner')
-     and exists (select 1 from public.dealerships d where d.id = old.dealership_id)
-     and not exists (
-       select 1 from public.dealership_members m
-       where m.dealership_id = old.dealership_id and m.role = 'owner' and m.user_id <> old.user_id
-     )
-  then
-    raise exception 'A dealership must have at least one owner. Transfer ownership first.'
-      using errcode = 'P0001';
+  if old.role <> 'owner' or (tg_op = 'UPDATE' and new.role = 'owner') then
+    return coalesce(new, old);
   end if;
-  return coalesce(new, old);
+  -- Serialize owner changes per dealership (two owners demoting each other at once).
+  perform 1 from public.dealerships d where d.id = old.dealership_id for update;
+  if not found then
+    return coalesce(new, old);
+  end if;
+  if exists (
+    select 1 from public.dealership_members m
+    where m.dealership_id = old.dealership_id and m.role = 'owner' and m.user_id <> old.user_id
+  ) then
+    return coalesce(new, old);
+  end if;
+  if tg_op = 'DELETE' and not exists (select 1 from public.profiles p where p.id = old.user_id) then
+    update public.dealerships set verification_status = 'suspended' where id = old.dealership_id;
+    return old;
+  end if;
+  raise exception 'A dealership must have at least one owner. Transfer ownership first.' using errcode = 'P0001';
 end;
 $$;
+
+-- When someone leaves the team or is demoted to staff, their outstanding invitations die with their access.
+create function private.revoke_member_invitations()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' or new.role = 'staff' then
+    delete from public.dealership_invitations i
+    where i.dealership_id = old.dealership_id and i.invited_by = old.user_id and i.accepted_at is null;
+  end if;
+  return null;
+end;
+$$;
+
+create trigger dealership_members_revoke_invitations
+  after update of role or delete on public.dealership_members
+  for each row execute function private.revoke_member_invitations();
+
+-- Verification vouches for the business identity. Changing it sends the dealership back for review.
+create function private.reverify_on_identity_change()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if old.verification_status = 'verified'
+     and new.verification_status = 'verified'
+     and (new.name, new.website, new.phone, new.address_line1, new.address_line2, new.city, new.region,
+          new.postal_code, extensions.st_astext(new.location::extensions.geometry))
+       is distinct from
+         (old.name, old.website, old.phone, old.address_line1, old.address_line2, old.city, old.region,
+          old.postal_code, extensions.st_astext(old.location::extensions.geometry))
+  then
+    new.verification_status := 'pending';
+    new.verified_at := null;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger dealerships_reverify_on_identity_change
+  before update on public.dealerships
+  for each row execute function private.reverify_on_identity_change();
 
 create trigger dealership_members_keep_one_owner
   before update or delete on public.dealership_members
@@ -183,20 +261,20 @@ create policy "Verified dealerships are public; members and admins see their own
   using (
     verification_status = 'verified'
     or private.is_dealership_member(id)
-    or private.is_admin()
+    or (select private.is_admin())
   );
 
 create policy "Dealership admins update their dealership" on public.dealerships
   for update to authenticated
-  using (private.is_dealership_member(id, 'admin'))
-  with check (private.is_dealership_member(id, 'admin'));
+  using (private.can_act_for_dealership(id, 'admin'))
+  with check (private.can_act_for_dealership(id, 'admin'));
 -- Insert only via apply_for_dealership(); no delete (suspend instead).
 
 grant select, delete, update (role) on public.dealership_members to authenticated;
 
 create policy "Members see their team" on public.dealership_members
   for select to authenticated
-  using (user_id = (select auth.uid()) or private.is_dealership_member(dealership_id) or private.is_admin());
+  using (user_id = (select auth.uid()) or private.is_dealership_member(dealership_id) or (select private.is_admin()));
 
 -- Owners manage everyone; admins manage non-owners and can't promote to owner.
 create policy "Owners and admins change roles" on public.dealership_members
@@ -330,7 +408,7 @@ as $$
 declare
   v_token text := encode(extensions.gen_random_bytes(32), 'hex');
 begin
-  if not private.is_dealership_member(p_dealership_id, 'admin') then
+  if not private.can_act_for_dealership(p_dealership_id, 'admin') then
     raise exception 'Only dealership owners and admins can invite' using errcode = '42501';
   end if;
   if p_role = 'owner' then

@@ -70,14 +70,14 @@ create table public.listings (
     references public.vehicles (id, owner_user_id) on delete cascade,
   constraint listings_vehicle_dealership_fk foreign key (vehicle_id, seller_dealership_id)
     references public.vehicles (id, owner_dealership_id) on delete cascade,
-  constraint listings_stock_number_dealer_only check (stock_number is null or seller_dealership_id is not null)
+  constraint listings_stock_number_dealer_only check (stock_number is null or seller_dealership_id is not null),
+  -- Plain (non-partial) unique so CSV re-imports can upsert on it. NULLs never collide.
+  constraint listings_dealer_stock_number_uniq unique (seller_dealership_id, stock_number)
 );
 
 -- One live (draft/active/pending) listing per vehicle.
 create unique index listings_one_live_per_vehicle on public.listings (vehicle_id)
   where status in ('draft', 'active', 'pending');
-create unique index listings_dealer_stock_number_uniq on public.listings (seller_dealership_id, stock_number)
-  where stock_number is not null and status <> 'removed';
 create index listings_location_idx on public.listings using gist (location);
 create index listings_status_published_idx on public.listings (status, published_at desc);
 create index listings_active_price_idx on public.listings (price_cents) where status = 'active';
@@ -90,7 +90,7 @@ create index listings_vehicle_dealership_idx on public.listings (vehicle_id, sel
 create trigger listings_set_updated_at before update on public.listings
   for each row execute function private.set_updated_at();
 
--- Server-controlled fields: dealer location, publish/sold timestamps.
+-- Server-controlled fields: public location, publish/sold timestamps, rate limits.
 create function private.listings_before_write()
 returns trigger
 language plpgsql
@@ -101,13 +101,19 @@ declare
   v_dealer record;
 begin
   if new.seller_dealership_id is not null then
+    -- Dealer listings always sit at the dealership.
     select d.location, d.city, d.region into v_dealer from public.dealerships d where d.id = new.seller_dealership_id;
     new.location := v_dealer.location;
     new.city := v_dealer.city;
     new.region := v_dealer.region;
+  else
+    -- Private sellers: the public point is ALWAYS approximate, whatever the client sends.
+    new.location := private.approximate_point(new.location);
   end if;
 
-  if new.status = 'active' and new.published_at is null then
+  -- (Re)publishing resets the date so a relisted car doesn't sort by its original date.
+  if new.status = 'active'
+     and (new.published_at is null or (tg_op = 'UPDATE' and old.status not in ('active', 'pending'))) then
     new.published_at := now();
   end if;
   if new.status = 'sold' and (tg_op = 'INSERT' or old.status <> 'sold') then
@@ -118,7 +124,7 @@ begin
 
   if tg_op = 'INSERT' then
     if new.seller_dealership_id is not null then
-      perform private.enforce_rate_limit('dealer_listing_create');
+      perform private.enforce_rate_limit('dealer_listing_create', new.seller_dealership_id);
     else
       perform private.enforce_rate_limit('listing_create');
     end if;
@@ -143,10 +149,31 @@ as $$
     where l.id = p_listing_id
       and (
         l.seller_user_id = (select auth.uid())
-        or (l.seller_dealership_id is not null and private.is_dealership_member(l.seller_dealership_id))
+        or (l.seller_dealership_id is not null and private.can_act_for_dealership(l.seller_dealership_id))
       )
   );
 $$;
+
+-- Keep dealer listings at the dealership's current address when it moves.
+create function private.sync_dealer_listing_locations()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  update public.listings
+  set location = new.location, city = new.city, region = new.region
+  where seller_dealership_id = new.id;
+  return null;
+end;
+$$;
+
+create trigger dealerships_sync_listing_locations
+  after update of location, city, region on public.dealerships
+  for each row
+  when (old.location is distinct from new.location or old.city is distinct from new.city or old.region is distinct from new.region)
+  execute function private.sync_dealer_listing_locations();
 
 revoke all on function private.can_manage_listing(uuid) from public;
 grant execute on function private.can_manage_listing(uuid) to authenticated;
@@ -172,6 +199,7 @@ create table public.listing_photos (
   listing_id uuid not null references public.listings (id) on delete cascade,
   -- Must live under the listing's own folder in the listing-photos bucket.
   storage_path text not null unique check (char_length(storage_path) <= 300),
+  -- 0..29 + unique(listing_id, position) caps a listing at 30 photos.
   position smallint not null check (position between 0 and 29),
   width integer check (width between 1 and 20000),
   height integer check (height between 1 and 20000),
@@ -180,23 +208,6 @@ create table public.listing_photos (
   constraint listing_photos_position_uniq unique (listing_id, position) deferrable initially deferred
 );
 
-create function private.listing_photos_before_insert()
-returns trigger
-language plpgsql
-security definer
-set search_path = ''
-as $$
-begin
-  perform private.enforce_rate_limit('photo_upload');
-  if (select count(*) from public.listing_photos p where p.listing_id = new.listing_id) >= 30 then
-    raise exception 'A listing can have at most 30 photos' using errcode = 'P0001';
-  end if;
-  return new;
-end;
-$$;
-
-create trigger listing_photos_before_insert before insert on public.listing_photos
-  for each row execute function private.listing_photos_before_insert();
 
 -- ---------------------------------------------------------------------------
 -- saved_listings
@@ -224,7 +235,16 @@ revoke all on public.vehicles, public.listings, public.listing_private_locations
 
 -- vehicles
 grant select on public.vehicles to anon, authenticated;
-grant insert, update, delete on public.vehicles to authenticated;
+-- No client-chosen ids, and ownership can never change after creation.
+grant insert (
+  owner_user_id, owner_dealership_id, vin, year, make_id, model_id, trim_level, mileage, body_style, drivetrain,
+  transmission, fuel_type, exterior_color, interior_color
+) on public.vehicles to authenticated;
+grant update (
+  vin, year, make_id, model_id, trim_level, mileage, body_style, drivetrain, transmission, fuel_type,
+  exterior_color, interior_color
+) on public.vehicles to authenticated;
+grant delete on public.vehicles to authenticated;
 
 create policy "Vehicles visible with their listings, or to their owners" on public.vehicles
   for select to anon, authenticated
@@ -239,25 +259,32 @@ create policy "Owners create vehicles" on public.vehicles
   for insert to authenticated
   with check (
     (owner_user_id = (select auth.uid()) and owner_dealership_id is null)
-    or (owner_dealership_id is not null and owner_user_id is null and private.is_dealership_member(owner_dealership_id))
+    or (owner_dealership_id is not null and owner_user_id is null and private.can_act_for_dealership(owner_dealership_id))
   );
 
 create policy "Owners update vehicles" on public.vehicles
   for update to authenticated
   using (
     owner_user_id = (select auth.uid())
-    or (owner_dealership_id is not null and private.is_dealership_member(owner_dealership_id))
+    or (owner_dealership_id is not null and private.can_act_for_dealership(owner_dealership_id))
   )
   with check (
-    (owner_user_id = (select auth.uid()) and owner_dealership_id is null)
-    or (owner_dealership_id is not null and owner_user_id is null and private.is_dealership_member(owner_dealership_id))
+    owner_user_id = (select auth.uid())
+    or (owner_dealership_id is not null and private.can_act_for_dealership(owner_dealership_id))
   );
 
-create policy "Owners delete vehicles" on public.vehicles
+-- A vehicle with any non-draft listing can't be deleted (that would cascade away live/sold listings and
+-- the history attached to them). Remove the listing instead.
+create policy "Owners delete vehicles without published listings" on public.vehicles
   for delete to authenticated
   using (
-    owner_user_id = (select auth.uid())
-    or (owner_dealership_id is not null and private.is_dealership_member(owner_dealership_id))
+    (
+      owner_user_id = (select auth.uid())
+      or (owner_dealership_id is not null and private.can_act_for_dealership(owner_dealership_id))
+    )
+    and not exists (
+      select 1 from public.listings l where l.vehicle_id = vehicles.id and l.status <> 'draft'
+    )
   );
 
 -- listings
@@ -279,7 +306,7 @@ create policy "Public listings are visible; sellers see their own" on public.lis
     )
     or seller_user_id = (select auth.uid())
     or (seller_dealership_id is not null and private.is_dealership_member(seller_dealership_id))
-    or private.is_admin()
+    or (select private.is_admin())
   );
 
 -- Unverified dealerships can only create/keep drafts.
@@ -289,24 +316,27 @@ create policy "Sellers create listings" on public.listings
     (seller_user_id = (select auth.uid()) and seller_dealership_id is null)
     or (
       seller_dealership_id is not null and seller_user_id is null
-      and private.is_dealership_member(seller_dealership_id)
+      and private.can_act_for_dealership(seller_dealership_id)
       and (status = 'draft' or private.is_verified_dealership(seller_dealership_id))
     )
   );
 
-create policy "Sellers update their listings" on public.listings
+-- Sellers edit their own; app admins can moderate (e.g. status = 'removed' after a scam report).
+create policy "Sellers and admins update listings" on public.listings
   for update to authenticated
   using (
     seller_user_id = (select auth.uid())
-    or (seller_dealership_id is not null and private.is_dealership_member(seller_dealership_id))
+    or (seller_dealership_id is not null and private.can_act_for_dealership(seller_dealership_id))
+    or (select private.is_admin())
   )
   with check (
     (seller_user_id = (select auth.uid()) and seller_dealership_id is null)
     or (
       seller_dealership_id is not null and seller_user_id is null
-      and private.is_dealership_member(seller_dealership_id)
+      and private.can_act_for_dealership(seller_dealership_id)
       and (status in ('draft', 'removed') or private.is_verified_dealership(seller_dealership_id))
     )
+    or (select private.is_admin())
   );
 
 create policy "Sellers delete draft listings" on public.listings
@@ -315,7 +345,7 @@ create policy "Sellers delete draft listings" on public.listings
     status = 'draft'
     and (
       seller_user_id = (select auth.uid())
-      or (seller_dealership_id is not null and private.is_dealership_member(seller_dealership_id))
+      or (seller_dealership_id is not null and private.can_act_for_dealership(seller_dealership_id))
     )
   );
 

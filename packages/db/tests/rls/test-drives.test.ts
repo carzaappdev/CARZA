@@ -8,8 +8,6 @@ import {
   type TestUser,
 } from './helpers';
 
-let buyer: TestUser;
-let buyer2: TestUser;
 let stranger: TestUser;
 let owner: TestUser;
 let staff: TestUser;
@@ -18,9 +16,7 @@ let dealerId: string;
 const inHours = (h: number) => new Date(Date.now() + h * 3600_000).toISOString();
 
 beforeAll(async () => {
-  [buyer, buyer2, stranger, owner, staff] = await Promise.all([
-    createUser('tdbuyer'),
-    createUser('tdbuyer2'),
+  [stranger, owner, staff] = await Promise.all([
     createUser('tdstranger'),
     createUser('tdowner'),
     createUser('tdstaff'),
@@ -32,6 +28,7 @@ afterAll(cleanup);
 
 describe('test drives', () => {
   it('are only available on dealer listings', async () => {
+    const buyer = await createUser('tdbuyer');
     const privateListing = await createListing(stranger);
     const { error } = await buyer.client.rpc('request_test_drive', {
       p_listing_id: privateListing.listingId,
@@ -41,6 +38,7 @@ describe('test drives', () => {
   });
 
   it('flow: request → only requester + dealership see it → dealer confirms', async () => {
+    const buyer = await createUser('tdbuyer');
     const { listingId } = await createListing(owner, { dealershipId: dealerId });
     const { data: id, error } = await buyer.client.rpc('request_test_drive', {
       p_listing_id: listingId,
@@ -86,6 +84,7 @@ describe('test drives', () => {
   });
 
   it('the same car cannot be double-booked', async () => {
+    const [buyer, buyer2] = await Promise.all([createUser('tdbuyer'), createUser('tdbuyer2')]);
     const { listingId } = await createListing(owner, { dealershipId: dealerId });
     const slot = inHours(96);
     const { data: a } = await buyer.client.rpc('request_test_drive', {
@@ -113,16 +112,23 @@ describe('test drives', () => {
     expect(clash.error?.code).toBe('23P01');
   });
 
-  it('rejects times in the past', async () => {
+  it('rejects times in the past or missing', async () => {
+    const buyer2 = await createUser('tdbuyer2');
     const { listingId } = await createListing(owner, { dealershipId: dealerId });
     const { error } = await buyer2.client.rpc('request_test_drive', {
       p_listing_id: listingId,
       p_proposed_times: [new Date(Date.now() - 3600_000).toISOString()],
     });
     expect(error?.code).toBe('22023');
+    const nullTime = await buyer2.client.rpc('request_test_drive', {
+      p_listing_id: listingId,
+      p_proposed_times: [null as unknown as string],
+    });
+    expect(nullTime.error).not.toBeNull();
   });
 
   it('either side can cancel; strangers cannot', async () => {
+    const buyer = await createUser('tdbuyer');
     const { listingId } = await createListing(owner, { dealershipId: dealerId });
     const { data: id } = await buyer.client.rpc('request_test_drive', {
       p_listing_id: listingId,
@@ -132,5 +138,26 @@ describe('test drives', () => {
       (await stranger.client.rpc('cancel_test_drive', { p_request_id: id! })).error?.code,
     ).toBe('P0002');
     expect((await buyer.client.rpc('cancel_test_drive', { p_request_id: id! })).error).toBeNull();
+  });
+
+  it('are cancelled (and the requester notified) when the listing is sold', async () => {
+    const buyer = await createUser('tdbuyer');
+    const { listingId } = await createListing(owner, { dealershipId: dealerId });
+    const { data: id } = await buyer.client.rpc('request_test_drive', {
+      p_listing_id: listingId,
+      p_proposed_times: [inHours(50)],
+    });
+    await staff.client.from('listings').update({ status: 'sold' }).eq('id', listingId);
+    const { data } = await buyer.client
+      .from('test_drive_requests')
+      .select('status')
+      .eq('id', id!)
+      .single();
+    expect(data?.status).toBe('cancelled');
+    const { data: notes } = await buyer.client
+      .from('notifications')
+      .select('type')
+      .eq('type', 'test_drive_cancelled');
+    expect(notes).toHaveLength(1);
   });
 });

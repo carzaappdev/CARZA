@@ -61,8 +61,10 @@ describe('rate limits (enforced in the database)', () => {
       p_listing_id: listingId,
       p_body: 'hi',
     });
+    // The per-minute window is aligned to the clock; 61 attempts guarantee one window exceeds 30
+    // even if the loop crosses a minute boundary.
     let lastError: { code?: string } | null = null;
-    for (let i = 0; i < 31 && !lastError; i++) {
+    for (let i = 0; i < 61 && !lastError; i++) {
       const { error } = await reporter.client
         .from('messages')
         .insert({ conversation_id: convId!, body: `msg ${i}` });

@@ -5,7 +5,7 @@ import { Constants } from './database.types';
 // Fails when a migration changes an enum but @carza/shared/constants wasn't updated (or vice versa).
 describe('shared enum constants match the database', () => {
   const db = Constants.public.Enums;
-  it.each([
+  const pairs = [
     ['app_role', shared.APP_ROLES],
     ['dealer_role', shared.DEALER_ROLES],
     ['verification_status', shared.VERIFICATION_STATUSES],
@@ -20,11 +20,13 @@ describe('shared enum constants match the database', () => {
     ['report_target', shared.REPORT_TARGETS],
     ['report_reason', shared.REPORT_REASONS],
     ['report_status', shared.REPORT_STATUSES],
-  ] as const)('%s', (name, values) => {
+  ] as const;
+
+  it.each(pairs)('%s', (name, values) => {
     expect([...values]).toEqual([...db[name]]);
   });
 
   it('covers every database enum', () => {
-    expect(Object.keys(db).sort()).toHaveLength(14);
+    expect(pairs.map(([name]) => name).sort()).toEqual(Object.keys(db).sort());
   });
 });

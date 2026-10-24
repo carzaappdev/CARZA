@@ -7,7 +7,8 @@ create table public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   username text not null unique check (username ~ '^[a-z0-9_]{3,30}$'),
   display_name text not null check (char_length(btrim(display_name)) between 1 and 60),
-  avatar_path text check (char_length(avatar_path) <= 300),
+  -- Must point inside the user's own folder in the avatars bucket.
+  avatar_path text check (char_length(avatar_path) <= 300 and avatar_path like id::text || '/%' and position('..' in avatar_path) = 0),
   bio text check (char_length(bio) <= 500),
   city text check (char_length(city) <= 80),
   region text check (char_length(region) <= 80),

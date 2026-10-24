@@ -24,10 +24,15 @@ export type ListingCard = Omit<
   fuel_type: SearchFn['Returns'][number]['fuel_type'] | null;
 };
 
-/** Radius + filter search over active listings (RLS applies). Returns one page and the total match count. */
+/**
+ * Radius + filter search over active listings (RLS applies). Returns one page and the total match count.
+ * `total` is null when the page is empty but offset > 0 (past the end: the count is unknown, not zero).
+ * The SQL caps limit at 48 and offset at 1000; validate params with Zod before calling.
+ */
 export async function searchListings(client: TypedClient, args: SearchListingsArgs) {
   const { data, error } = await client.rpc('search_listings', args);
   if (error) throw error;
   const rows = (data ?? []) as ListingCard[];
-  return { rows, total: rows[0]?.total_count ?? 0 };
+  const total = rows[0]?.total_count ?? ((args.p_offset ?? 0) > 0 ? null : 0);
+  return { rows, total };
 }

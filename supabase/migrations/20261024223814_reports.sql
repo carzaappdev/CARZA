@@ -67,7 +67,7 @@ grant insert (target_type, target_id, reason, details) on public.reports to auth
 grant update (status, resolved_by, resolved_at) on public.reports to authenticated;
 
 create policy "Reporters see their reports; admins see all" on public.reports
-  for select to authenticated using (reporter_id = (select auth.uid()) or private.is_admin());
+  for select to authenticated using (reporter_id = (select auth.uid()) or (select private.is_admin()));
 
 -- You can only report things you can actually see (the subqueries run under your own RLS),
 -- so report ids can't be used to probe for hidden content.
@@ -84,4 +84,4 @@ create policy "Users report visible content" on public.reports
   );
 
 create policy "Admins triage reports" on public.reports
-  for update to authenticated using (private.is_admin()) with check (private.is_admin());
+  for update to authenticated using ((select private.is_admin())) with check ((select private.is_admin()));

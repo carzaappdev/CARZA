@@ -6,7 +6,8 @@ create table public.test_drive_requests (
   listing_id uuid not null references public.listings (id) on delete cascade,
   dealership_id uuid not null references public.dealerships (id) on delete cascade,
   requester_id uuid not null references public.profiles (id) on delete cascade,
-  proposed_times timestamptz[] not null check (cardinality(proposed_times) between 1 and 3),
+  proposed_times timestamptz[] not null
+    check (cardinality(proposed_times) between 1 and 3 and array_position(proposed_times, null) is null),
   confirmed_time timestamptz,
   -- Stored (not computed) because the exclusion constraint needs an immutable expression.
   confirmed_end timestamptz,
@@ -109,7 +110,8 @@ begin
     raise exception 'You can''t request a test drive from your own dealership.' using errcode = 'P0001';
   end if;
 
-  if p_proposed_times is null or cardinality(p_proposed_times) not between 1 and 3 then
+  if p_proposed_times is null or cardinality(p_proposed_times) not between 1 and 3
+     or array_position(p_proposed_times, null) is not null then
     raise exception 'Propose between 1 and 3 times.' using errcode = '22023';
   end if;
   foreach v_time in array p_proposed_times loop
@@ -143,7 +145,7 @@ declare
   v_request public.test_drive_requests;
 begin
   select * into v_request from public.test_drive_requests where id = p_request_id for update;
-  if v_request.id is null or not private.is_dealership_member(v_request.dealership_id) then
+  if v_request.id is null or not private.can_act_for_dealership(v_request.dealership_id) then
     raise exception 'Test drive request not found' using errcode = 'P0002';
   end if;
   if v_request.status <> 'requested' then
@@ -184,7 +186,7 @@ declare
 begin
   select * into v_request from public.test_drive_requests where id = p_request_id for update;
   v_is_requester := v_request.requester_id = auth.uid();
-  if v_request.id is null or not (v_is_requester or private.is_dealership_member(v_request.dealership_id)) then
+  if v_request.id is null or not (v_is_requester or private.can_act_for_dealership(v_request.dealership_id)) then
     raise exception 'Test drive request not found' using errcode = 'P0002';
   end if;
   if v_request.status not in ('requested', 'confirmed') then
@@ -212,7 +214,7 @@ declare
   v_request public.test_drive_requests;
 begin
   select * into v_request from public.test_drive_requests where id = p_request_id for update;
-  if v_request.id is null or not private.is_dealership_member(v_request.dealership_id) then
+  if v_request.id is null or not private.can_act_for_dealership(v_request.dealership_id) then
     raise exception 'Test drive request not found' using errcode = 'P0002';
   end if;
   if v_request.status <> 'confirmed' or v_request.confirmed_time > now() then
@@ -221,6 +223,35 @@ begin
   update public.test_drive_requests set status = 'completed' where id = p_request_id;
 end;
 $$;
+
+-- When a listing stops being active (sold, removed, back to draft), open test drives are cancelled and the
+-- requesters notified, so nobody shows up for a car that's gone and the open-request slot is freed.
+create function private.cancel_test_drives_for_inactive_listing()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_request public.test_drive_requests;
+begin
+  for v_request in
+    update public.test_drive_requests
+    set status = 'cancelled', dealer_note = coalesce(dealer_note, 'This car is no longer available.')
+    where listing_id = new.id and status in ('requested', 'confirmed')
+    returning *
+  loop
+    perform private.test_drive_notify(v_request, 'test_drive_cancelled', false);
+  end loop;
+  return null;
+end;
+$$;
+
+create trigger listings_cancel_test_drives
+  after update of status on public.listings
+  for each row
+  when (old.status = 'active' and new.status <> 'active')
+  execute function private.cancel_test_drives_for_inactive_listing();
 
 revoke all on function public.request_test_drive(uuid, timestamptz[], text) from public, anon;
 revoke all on function public.respond_test_drive(uuid, boolean, timestamptz, text) from public, anon;

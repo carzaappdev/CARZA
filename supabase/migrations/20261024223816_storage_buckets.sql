@@ -12,9 +12,17 @@ on conflict (id) do update set
   allowed_mime_types = excluded.allowed_mime_types;
 
 -- listing-photos: {listing_id}/{uuid}.{ext}
+-- SELECT policies are required for update/delete to match rows (and for upsert). Public URLs don't use them.
+create policy "Sellers see their listing photos" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'listing-photos' and private.can_manage_listing(private.try_uuid((storage.foldername(name))[1])));
 create policy "Sellers upload listing photos" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'listing-photos' and private.can_manage_listing(private.try_uuid((storage.foldername(name))[1])));
+  with check (
+    bucket_id = 'listing-photos'
+    and private.can_manage_listing(private.try_uuid((storage.foldername(name))[1]))
+    and private.allow_upload('photo_upload')
+  );
 create policy "Sellers replace listing photos" on storage.objects
   for update to authenticated
   using (bucket_id = 'listing-photos' and private.can_manage_listing(private.try_uuid((storage.foldername(name))[1])))
@@ -24,9 +32,16 @@ create policy "Sellers delete listing photos" on storage.objects
   using (bucket_id = 'listing-photos' and private.can_manage_listing(private.try_uuid((storage.foldername(name))[1])));
 
 -- avatars: {user_id}/{uuid}.{ext}
+create policy "Users see their avatar files" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy "Users upload their avatar" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
+  with check (
+    bucket_id = 'avatars'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+    and private.allow_upload('profile_image_upload')
+  );
 create policy "Users replace their avatar" on storage.objects
   for update to authenticated
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text)
@@ -36,16 +51,21 @@ create policy "Users delete their avatar" on storage.objects
   using (bucket_id = 'avatars' and (storage.foldername(name))[1] = (select auth.uid())::text);
 
 -- dealership-logos: {dealership_id}/{uuid}.{ext}
+create policy "Dealership admins see logo files" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'dealership-logos' and private.is_dealership_member(private.try_uuid((storage.foldername(name))[1]), 'admin'));
 create policy "Dealership admins upload logos" on storage.objects
   for insert to authenticated
-  with check (bucket_id = 'dealership-logos' and private.is_dealership_member(private.try_uuid((storage.foldername(name))[1]), 'admin'));
+  with check (
+    bucket_id = 'dealership-logos'
+    and private.can_act_for_dealership(private.try_uuid((storage.foldername(name))[1]), 'admin')
+    and private.allow_upload('profile_image_upload')
+  );
 create policy "Dealership admins replace logos" on storage.objects
   for update to authenticated
-  using (bucket_id = 'dealership-logos' and private.is_dealership_member(private.try_uuid((storage.foldername(name))[1]), 'admin'))
-  with check (bucket_id = 'dealership-logos' and private.is_dealership_member(private.try_uuid((storage.foldername(name))[1]), 'admin'));
+  using (bucket_id = 'dealership-logos' and private.can_act_for_dealership(private.try_uuid((storage.foldername(name))[1]), 'admin'))
+  with check (bucket_id = 'dealership-logos' and private.can_act_for_dealership(private.try_uuid((storage.foldername(name))[1]), 'admin'));
 create policy "Dealership admins delete logos" on storage.objects
   for delete to authenticated
-  using (bucket_id = 'dealership-logos' and private.is_dealership_member(private.try_uuid((storage.foldername(name))[1]), 'admin'));
+  using (bucket_id = 'dealership-logos' and private.can_act_for_dealership(private.try_uuid((storage.foldername(name))[1]), 'admin'));
 
--- No select policies: public buckets serve files by URL without one, and listing bucket contents via the
--- API is not needed (we always know paths from our own tables).

@@ -1,6 +1,8 @@
 -- Rate limiting, enforced INSIDE the database so it cannot be skipped by calling the API directly.
--- Callers (triggers / RPCs) run `perform private.enforce_rate_limit('bucket')`; when over the limit it
--- raises SQLSTATE CZ429, which the app maps to RATE_LIMITED.
+-- Callers (triggers / RPCs / storage policies) run `perform private.enforce_rate_limit('bucket')`; when over
+-- the limit it raises SQLSTATE CZ429, which the app maps to RATE_LIMITED.
+-- Counters live in the caller's transaction: a request that fails for another reason doesn't count, and
+-- once a window is full every further call is refused until the window rolls over.
 
 create table private.rate_limits (
   key text not null,
@@ -23,9 +25,10 @@ declare
   v_window_start timestamptz;
   v_count integer;
 begin
-  -- Limits apply to API callers. Direct SQL (migrations, seed, admin scripts in the SQL editor) has no JWT,
-  -- and the service role is trusted server code; both skip. Signed-in API calls always count.
-  if auth.role() is null or auth.role() = 'service_role' then
+  -- Limits apply to API callers, identified by the role PostgREST/Storage switched to (`anon` or
+  -- `authenticated`). The `role` setting is unaffected by SECURITY DEFINER, unlike current_user.
+  -- Direct SQL (migrations, seed, SQL editor) and the service role are trusted and skip.
+  if coalesce(current_setting('role', true), 'none') not in ('anon', 'authenticated') then
     return;
   end if;
   if v_subject is null then
@@ -41,8 +44,11 @@ begin
       ('conversation_start', 10, 3600),
       ('conversation_start', 30, 86400),
       ('listing_create', 10, 86400),
-      ('dealer_listing_create', 1000, 86400),
+      -- Keyed per dealership (not per staff member), so adding staff doesn't multiply it.
+      ('dealer_listing_create', 2000, 86400),
       ('photo_upload', 200, 3600),
+      ('photo_upload', 1000, 86400),
+      ('profile_image_upload', 20, 3600),
       ('test_drive_request', 5, 3600),
       ('test_drive_request', 10, 86400),
       ('report_create', 20, 86400),
@@ -75,3 +81,20 @@ end;
 $$;
 
 revoke all on function private.enforce_rate_limit(text, uuid) from public, anon, authenticated;
+
+-- Boolean wrapper so storage policies can apply a limit inside a WITH CHECK expression.
+create function private.allow_upload(p_bucket text)
+returns boolean
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+begin
+  perform private.enforce_rate_limit(p_bucket);
+  return true;
+end;
+$$;
+
+revoke all on function private.allow_upload(text) from public, anon;
+grant execute on function private.allow_upload(text) to authenticated;

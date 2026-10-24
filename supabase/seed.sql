@@ -11,6 +11,17 @@
 -- generated relative to it (dealerships, listings, users).
 -- =============================================================================
 
+-- Hard stop: refuse to run anywhere but a fresh LOCAL stack. The local CLI stack uses the well-known
+-- dev JWT secret; hosted projects never do. Seeding creates a known-password admin, so this must not
+-- run against carza-dev or carza-prod (e.g. via `db push --include-seed`).
+do $$
+begin
+  if current_setting('app.settings.jwt_secret', true) is distinct from 'super-secret-jwt-token-with-at-least-32-characters-long'
+     or exists (select 1 from auth.users) then
+    raise exception 'seed.sql refused: only runs on an empty local Supabase stack';
+  end if;
+end $$;
+
 create temporary table seed_config as
 select
   'Austin'::text as city,           -- {{METRO}} display city
@@ -32,15 +43,6 @@ returns extensions.geography language sql stable as $$
     c.lat + north_km / 110.574
   ), 4326)::extensions.geography
   from seed_config c
-$$;
-
--- Approximate (public) point for private sellers: snap to a ~1.5 km grid. Mirrors @carza/shared geo logic.
-create function pg_temp.approx(p extensions.geography)
-returns extensions.geography language sql immutable as $$
-  select extensions.st_setsrid(extensions.st_makepoint(
-    round(extensions.st_x(p::extensions.geometry) / 0.015) * 0.015,
-    round(extensions.st_y(p::extensions.geometry) / 0.0135) * 0.0135
-  ), 4326)::extensions.geography
 $$;
 
 -- -----------------------------------------------------------------------------
@@ -88,7 +90,7 @@ where p.id = pg_temp.sid(u.label);
 update public.profiles set role = 'admin' where id = pg_temp.sid('admin');
 
 update public.profile_private pp
-set postal_code = '78701', location = pg_temp.approx(pg_temp.pt(3, -2))
+set postal_code = '78701', location = private.approximate_point(pg_temp.pt(3, -2))
 where pp.user_id in (pg_temp.sid('buyer1'), pg_temp.sid('buyer2'), pg_temp.sid('buyer3'));
 
 -- -----------------------------------------------------------------------------
@@ -267,8 +269,8 @@ select
                 s.year, s.make, s.model, to_char(s.mileage, 'FM999,999'))
   end,
   case when s.is_dealer then upper(left(s.seller, 1)) || lpad(s.n::text, 5, '0') end,
-  -- Dealer listings are overwritten with the dealership location by trigger.
-  pg_temp.approx(pg_temp.pt(s.north_km, s.east_km)), c.city, c.region,
+  -- The listings trigger replaces this with the dealership location (dealer) or snaps it to the grid (private).
+  pg_temp.pt(s.north_km, s.east_km), c.city, c.region,
   case when s.status <> 'draft' then now() - make_interval(days => s.published_days_ago) end,
   now() - make_interval(days => s.published_days_ago + 2)
 from seed_listings s, seed_config c;

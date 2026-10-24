@@ -66,8 +66,29 @@ as $$
   );
 $$;
 
+-- Write-side: participants, or staff of a dealership that is allowed to operate (not suspended/rejected).
+create function private.can_post_in_conversation(p_conversation_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.conversation_participants p
+    where p.conversation_id = p_conversation_id and p.user_id = (select auth.uid())
+  ) or exists (
+    select 1 from public.conversations c
+    where c.id = p_conversation_id
+      and c.dealership_id is not null
+      and private.can_act_for_dealership(c.dealership_id)
+  );
+$$;
+
 revoke all on function private.is_conversation_member(uuid) from public;
+revoke all on function private.can_post_in_conversation(uuid) from public;
 grant execute on function private.is_conversation_member(uuid) to authenticated;
+grant execute on function private.can_post_in_conversation(uuid) to authenticated;
 
 -- Before insert: rate limit. After insert: bump thread, mark read for sender, notify the other side.
 create function private.messages_before_insert()
@@ -174,8 +195,10 @@ create policy "Members read messages" on public.messages
   for select to authenticated using (private.is_conversation_member(conversation_id));
 create policy "Members send messages as themselves" on public.messages
   for insert to authenticated
-  with check (sender_id = (select auth.uid()) and private.is_conversation_member(conversation_id));
+  with check (sender_id = (select auth.uid()) and private.can_post_in_conversation(conversation_id));
 -- No update/delete: messages are kept intact as evidence for scam reports.
+-- Note: sender_id is visible to the other side, so a consumer can see which staff member replied
+-- (their public profile only). The UI labels dealer-side messages with the dealership name.
 
 -- Realtime: only messages are published. Delivery respects the select policy above.
 alter publication supabase_realtime add table public.messages;
@@ -217,14 +240,24 @@ begin
   if v_conv_id is null then
     perform private.enforce_rate_limit('conversation_start');
 
+    -- ON CONFLICT: two concurrent first messages resolve to the same thread instead of erroring.
     insert into public.conversations (listing_id, dealership_id, created_by)
     values (p_listing_id, v_listing.seller_dealership_id, v_uid)
+    on conflict (listing_id, created_by) where listing_id is not null do nothing
     returning id into v_conv_id;
 
-    insert into public.conversation_participants (conversation_id, user_id) values (v_conv_id, v_uid);
+    if v_conv_id is null then
+      select c.id into v_conv_id from public.conversations c
+      where c.listing_id = p_listing_id and c.created_by = v_uid;
+    end if;
+
+    insert into public.conversation_participants (conversation_id, user_id)
+    values (v_conv_id, v_uid)
+    on conflict do nothing;
     if v_listing.seller_user_id is not null then
       insert into public.conversation_participants (conversation_id, user_id)
-      values (v_conv_id, v_listing.seller_user_id);
+      values (v_conv_id, v_listing.seller_user_id)
+      on conflict do nothing;
     end if;
   end if;
 
@@ -249,13 +282,20 @@ begin
   update public.conversation_participants set last_read_at = now()
   where conversation_id = p_conversation_id and user_id = v_uid;
 
-  if not found then
+  if found then
+    update public.notifications set read_at = now()
+    where user_id = v_uid and type = 'new_message' and read_at is null
+      and data ->> 'conversation_id' = p_conversation_id::text;
+  else
+    -- Dealer side: read state is shared by the team, so clear the badge for every member.
     update public.conversations set dealership_last_read_at = now() where id = p_conversation_id;
+    update public.notifications n set read_at = now()
+    from public.conversations c
+    join public.dealership_members m on m.dealership_id = c.dealership_id
+    where c.id = p_conversation_id
+      and n.user_id = m.user_id and n.type = 'new_message' and n.read_at is null
+      and n.data ->> 'conversation_id' = p_conversation_id::text;
   end if;
-
-  update public.notifications set read_at = now()
-  where user_id = v_uid and type = 'new_message' and read_at is null
-    and data ->> 'conversation_id' = p_conversation_id::text;
 end;
 $$;
 
