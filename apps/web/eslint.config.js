@@ -1,5 +1,4 @@
+import { defineConfig } from 'eslint/config';
 import next from '@carza/config/eslint/next';
 
-const config = [...next, { ignores: ['.next/**', 'next-env.d.ts'] }];
-
-export default config;
+export default defineConfig(next, { ignores: ['.next/**', 'next-env.d.ts'] });

@@ -24,6 +24,14 @@ describe('safeNextPath', () => {
     ['/\n/evil.com'],
     ['evil.com/path'],
     ['http:/evil.com'],
+    ['/.//evil.com'],
+    ['/..//evil.com'],
+    ['/%2e//evil.com'],
+    ['/a/..//evil.com'],
+    ['/./\\evil.com'],
+    ['/%2e%2e//evil.com'],
+    ['/.\\/evil.com'],
+    ['/./\\/evil.com'],
   ])('rejects %j', (input) => {
     expect(safeNextPath(input)).toBe('/');
   });

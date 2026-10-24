@@ -4,16 +4,21 @@
  */
 export function safeNextPath(next: string | null | undefined, fallback = '/'): string {
   if (!next) return fallback;
-  // Must start with exactly one "/" and not be protocol-relative ("//x") or a backslash trick ("/\x").
-  if (!next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) return fallback;
-  // Reject control characters (e.g. "/\t/evil.com" is normalized by some browsers to "//evil.com").
+  // Reject control characters (e.g. "/\t/evil.com" is normalized by browsers to "//evil.com").
   if (/[\u0000-\u001f\u007f]/.test(next)) return fallback;
+  if (!isSafeRelative(next)) return fallback;
   try {
     const base = 'https://carza.invalid';
     const url = new URL(next, base);
     if (url.origin !== base) return fallback;
-    return url.pathname + url.search + url.hash;
+    const normalized = url.pathname + url.search + url.hash;
+    // Check again AFTER normalization: dot-segments like "/.//evil.com" collapse to "//evil.com".
+    return isSafeRelative(normalized) ? normalized : fallback;
   } catch {
     return fallback;
   }
 }
+
+// Exactly one leading "/" and not protocol-relative ("//x") or a backslash trick ("/\x").
+const isSafeRelative = (path: string) =>
+  path.startsWith('/') && !path.startsWith('//') && !path.startsWith('/\\');

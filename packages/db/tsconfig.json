@@ -1,4 +1,4 @@
 {
-  "extends": "@carza/config/tsconfig/library.json",
-  "include": ["src"]
+  "extends": "@carza/config/tsconfig/node.json",
+  "include": ["src", "tests"]
 }

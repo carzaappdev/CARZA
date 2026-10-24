@@ -29,8 +29,8 @@ carza/
 ├── apps/
 │   └── web/                   # @carza/web: Next.js 16 App Router
 │       ├── next.config.ts     # imports env.ts (fails build on bad env), headers, images
-│       ├── proxy.ts           # Next 16's renamed "middleware": session refresh + route guard + CSP nonce
 │       ├── src/
+│       │   ├── proxy.ts               # Next 16's renamed "middleware": session refresh + route guard + CSP nonce
 │       │   ├── env.ts                 # Zod-validated env (server / client split)
 │       │   ├── app/                   # routes (see 1.2)
 │       │   ├── components/
@@ -118,14 +118,14 @@ Conventions (enforced in review):
   The table itself doesn't grant `update` on those columns.
 - Column-level `grant update (col, …)` locks privileged columns (`profiles.role`, `dealerships.verification_status`).
 
-Extensions: `postgis` (schema `extensions`), `btree_gist` (no-double-booking constraint), `citext` (usernames, emails).
+Extensions: `postgis` (schema `extensions`), `btree_gist` (no-double-booking constraint). Usernames, slugs and invite emails are stored lowercase (enforced by CHECK), so no `citext` is needed.
 
 ### 2.1 Enums
 
 | Enum                  | Values                                                                                                                                                                          |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `app_role`            | `user`, `admin`                                                                                                                                                                 |
-| `dealer_role`         | `owner`, `admin`, `staff` (ordered; "minRole" compares by rank)                                                                                                                 |
+| `dealer_role`         | `staff`, `admin`, `owner`. Declared lowest → highest so `role >= 'admin'` works through enum ordering                                                                           |
 | `verification_status` | `pending`, `verified`, `rejected`, `suspended`                                                                                                                                  |
 | `listing_status`      | `draft`, `active`, `pending`, `sold`, `removed`                                                                                                                                 |
 | `listing_condition`   | `new`, `used`, `certified`                                                                                                                                                      |
@@ -144,8 +144,8 @@ unit test compares them against the generated DB types, so drift fails CI.
 
 ### 2.2 Make/model lookup: tables, not enums
 
-`vehicle_makes(id smallint identity, name citext unique, slug unique)` and
-`vehicle_models(id int identity, make_id → vehicle_makes on delete restrict, name citext, slug, unique(make_id, slug))`.
+`vehicle_makes(id smallint identity, name text unique, slug unique)` and
+`vehicle_models(id int identity, make_id → vehicle_makes on delete restrict, name text, slug, unique(make_id, slug))`.
 These are seeded **in a migration** (they're reference data and prod needs them too): about 45 US-market makes and about 450 models.
 
 - RLS: anyone can `select`; nobody can write through the API (no insert/update/delete policies). New models are added by migration.
@@ -156,16 +156,16 @@ These are seeded **in a migration** (they're reference data and prod needs them 
 
 #### `profiles` (1:1 with `auth.users`)
 
-| Column                 | Type                                             | Notes                                                               |
-| ---------------------- | ------------------------------------------------ | ------------------------------------------------------------------- |
-| id                     | uuid PK → `auth.users(id)` **on delete cascade** |                                                                     |
-| username               | citext unique not null                           | `^[a-z0-9_]{3,30}$`. Trigger generates one from email/name + suffix |
-| display_name           | text not null                                    | 1–60 chars                                                          |
-| avatar_path            | text null                                        | key in `avatars` bucket                                             |
-| bio                    | text null                                        | ≤ 500                                                               |
-| city, region           | text null                                        | public, e.g. "Austin", "TX"                                         |
-| role                   | app_role default `user`                          | not updatable by users (column grants)                              |
-| created_at, updated_at | timestamptz                                      |                                                                     |
+| Column                 | Type                                             | Notes                                                                                                                                                |
+| ---------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                     | uuid PK → `auth.users(id)` **on delete cascade** |                                                                                                                                                      |
+| username               | text unique not null                             | `^[a-z0-9_]{3,30}$` (lowercase enforced). Trigger generates one from the display name + random suffix. **Never from the email**, which would leak it |
+| display_name           | text not null                                    | 1–60 chars                                                                                                                                           |
+| avatar_path            | text null                                        | key in `avatars` bucket                                                                                                                              |
+| bio                    | text null                                        | ≤ 500                                                                                                                                                |
+| city, region           | text null                                        | public, e.g. "Austin", "TX"                                                                                                                          |
+| role                   | app_role default `user`                          | not updatable by users (column grants)                                                                                                               |
+| created_at, updated_at | timestamptz                                      |                                                                                                                                                      |
 
 - **Created by** an `after insert on auth.users` trigger (`handle_new_user`, security definer). It uses `raw_user_meta_data` `full_name`/`name` from Google/Apple and falls back to the email local part.
 - **RLS:** `select` for anyone (every column in this table is public by design). `update` only own row, and only the columns granted (`username, display_name, avatar_path, bio, city, region`). No `insert`/`delete` (the trigger inserts; deleting the auth user cascades).
@@ -183,7 +183,7 @@ These are seeded **in a migration** (they're reference data and prod needs them 
 | Column                                                  | Type                                   | Notes                                                                                                     |
 | ------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | id                                                      | uuid PK                                |                                                                                                           |
-| slug                                                    | citext unique not null                 | public URL                                                                                                |
+| slug                                                    | text unique not null                   | lowercase `^[a-z0-9-]+$`, public URL                                                                      |
 | name                                                    | text not null                          |                                                                                                           |
 | description                                             | text null                              | ≤ 2000                                                                                                    |
 | phone, email, website                                   | text null                              | public business contact                                                                                   |
@@ -216,49 +216,49 @@ These are seeded **in a migration** (they're reference data and prod needs them 
 
 #### `dealership_invitations` (needed for `/dealer/[id]/team`)
 
-| id uuid PK · dealership_id → dealerships on delete cascade · email citext · role dealer_role check (≠ owner) · invited_by → profiles on delete set null · token_hash text unique · expires_at timestamptz (7 days) · accepted_at timestamptz null · created_at |
+| id uuid PK · dealership_id → dealerships on delete cascade · email text (lowercase) · role dealer_role check (≠ owner) · invited_by → profiles on delete set null · token_hash text unique · expires_at timestamptz (7 days) · accepted_at timestamptz null · created_at |
 
 - **RLS:** `select`/`insert`/`delete` by dealership owner/admin. The invitee accepts via `accept_dealership_invitation(token)` RPC, which checks the token hash, expiry, and that `auth.email()` matches the invited email. The plain token goes only in the email.
 - Unique partial index: one open invite per `(dealership_id, email)`.
 
 #### `vehicles` (the physical car; reused by MyGarage in Phase 2)
 
-| Column                                          | Type                                          | Notes                                                                                                           |
-| ----------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| id                                              | uuid PK                                       |                                                                                                                 |
-| owner_user_id                                   | uuid → profiles **on delete cascade** null    | exactly one owner…                                                                                              |
-| owner_dealership_id                             | uuid → dealerships **on delete cascade** null | …enforced by `check (num_nonnulls(owner_user_id, owner_dealership_id) = 1)`                                     |
-| vin                                             | text null                                     | `^[A-HJ-NPR-Z0-9]{17}$` (uppercased). **Not unique**: the same car is legitimately relisted by different owners |
-| year                                            | smallint not null                             | 1950 … current year + 1 (trigger, since check constraints can't use now())                                      |
-| make_id                                         | smallint → vehicle_makes **restrict**         |                                                                                                                 |
-| model_id                                        | int → vehicle_models **restrict**             | trigger asserts model belongs to make                                                                           |
-| trim                                            | text null                                     |                                                                                                                 |
-| mileage                                         | integer not null                              | ≥ 0, ≤ 2,000,000                                                                                                |
-| body_style, drivetrain, transmission, fuel_type | enums, null allowed                           | dealers' CSVs are often incomplete                                                                              |
-| exterior_color, interior_color                  | text null                                     | free text; a normalized color facet can come later                                                              |
-| created_at, updated_at                          |                                               |                                                                                                                 |
+| Column                                          | Type                                          | Notes                                                                                                                            |
+| ----------------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| id                                              | uuid PK                                       |                                                                                                                                  |
+| owner_user_id                                   | uuid → profiles **on delete cascade** null    | exactly one owner…                                                                                                               |
+| owner_dealership_id                             | uuid → dealerships **on delete cascade** null | …enforced by `check (num_nonnulls(owner_user_id, owner_dealership_id) = 1)`                                                      |
+| vin                                             | text null                                     | `^[A-HJ-NPR-Z0-9]{17}$` (uppercased). **Not unique**: the same car is legitimately relisted by different owners                  |
+| year                                            | smallint not null                             | 1950 … current year + 1 (trigger, since check constraints can't use now())                                                       |
+| make_id                                         | smallint → vehicle_makes **restrict**         |                                                                                                                                  |
+| model_id                                        | int                                           | composite FK `(make_id, model_id) → vehicle_models(make_id, id)`, so the model must belong to the make (declarative, no trigger) |
+| trim                                            | text null                                     |                                                                                                                                  |
+| mileage                                         | integer not null                              | ≥ 0, ≤ 2,000,000                                                                                                                 |
+| body_style, drivetrain, transmission, fuel_type | enums, null allowed                           | dealers' CSVs are often incomplete                                                                                               |
+| exterior_color, interior_color                  | text null                                     | free text; a normalized color facet can come later                                                                               |
+| created_at, updated_at                          |                                               |                                                                                                                                  |
 
 - **RLS:** `select` if you own it, are a member of the owning dealership, or it backs a publicly visible listing. `insert`/`update`/`delete` for the owner (user) or dealership members (staff+).
 - Indexes: `(make_id, model_id)`, `(year)`, `(mileage)`, `(vin)`, `(owner_user_id)`, `(owner_dealership_id)`.
 
 #### `listings`
 
-| Column                 | Type                                          | Notes                                                                                                                    |
-| ---------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| id                     | uuid PK                                       |                                                                                                                          |
-| vehicle_id             | uuid → vehicles **on delete cascade**         |                                                                                                                          |
-| seller_user_id         | uuid → profiles **on delete cascade** null    |                                                                                                                          |
-| seller_dealership_id   | uuid → dealerships **on delete cascade** null |                                                                                                                          |
-|                        |                                               | `check (num_nonnulls(seller_user_id, seller_dealership_id) = 1)`. A trigger asserts the seller matches the vehicle owner |
-| status                 | listing_status default `draft`                |                                                                                                                          |
-| condition              | listing_condition default `used`              |                                                                                                                          |
-| price_cents            | bigint not null                               | > 0, ≤ $10M                                                                                                              |
-| description            | text null                                     | ≤ 5000                                                                                                                   |
-| stock_number           | text null                                     | dealers; unique per dealership when present (CSV re-import upserts on it)                                                |
-| location               | geography(Point) not null                     | **public point**: dealer → dealership location; private seller → approximate (see below)                                 |
-| city, region           | text not null                                 | display                                                                                                                  |
-| published_at, sold_at  | timestamptz null                              | set by trigger on status change                                                                                          |
-| created_at, updated_at |                                               |                                                                                                                          |
+| Column                 | Type                                          | Notes                                                                                                                                                                                                                                                         |
+| ---------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| id                     | uuid PK                                       |                                                                                                                                                                                                                                                               |
+| vehicle_id             | uuid → vehicles **on delete cascade**         |                                                                                                                                                                                                                                                               |
+| seller_user_id         | uuid → profiles **on delete cascade** null    |                                                                                                                                                                                                                                                               |
+| seller_dealership_id   | uuid → dealerships **on delete cascade** null |                                                                                                                                                                                                                                                               |
+|                        |                                               | `check (num_nonnulls(seller_user_id, seller_dealership_id) = 1)`. Composite FKs `(vehicle_id, seller_user_id) → vehicles(id, owner_user_id)` and `(vehicle_id, seller_dealership_id) → vehicles(id, owner_dealership_id)` force the seller to own the vehicle |
+| status                 | listing_status default `draft`                |                                                                                                                                                                                                                                                               |
+| condition              | listing_condition default `used`              |                                                                                                                                                                                                                                                               |
+| price_cents            | bigint not null                               | > 0, ≤ $10M                                                                                                                                                                                                                                                   |
+| description            | text null                                     | ≤ 5000                                                                                                                                                                                                                                                        |
+| stock_number           | text null                                     | dealers; unique per dealership when present (CSV re-import upserts on it)                                                                                                                                                                                     |
+| location               | geography(Point) not null                     | **public point**: dealer → dealership location; private seller → approximate (see below)                                                                                                                                                                      |
+| city, region           | text not null                                 | display                                                                                                                                                                                                                                                       |
+| published_at, sold_at  | timestamptz null                              | set by trigger on status change                                                                                                                                                                                                                               |
+| created_at, updated_at |                                               |                                                                                                                                                                                                                                                               |
 
 - **Private-seller location privacy.** The exact point lives in `listing_private_locations(listing_id PK → listings on delete cascade, location geography, postal_code)`, readable only by the seller. Public `listings.location` is computed by the server (`@carza/shared/logic/geo.approximatePoint`), which snaps to a ~1.5 km grid cell center. We never show a map pin closer than that. RLS on `listing_private_locations`: owner-only for all operations.
 - **One live listing per vehicle:** unique partial index on `vehicle_id where status in ('draft','active','pending')`.
@@ -308,22 +308,22 @@ The model:
 
 #### `test_drive_requests` (dealer listings only)
 
-| Column                      | Type                                    | Notes                                                           |
-| --------------------------- | --------------------------------------- | --------------------------------------------------------------- |
-| id                          | uuid PK                                 |                                                                 |
-| listing_id                  | uuid → listings **on delete cascade**   | must be a dealer listing that's `active` (RPC checks)           |
-| dealership_id               | uuid → dealerships on delete cascade    | denormalized from listing (by RPC) for simple RLS               |
-| requester_id                | uuid → profiles on delete cascade       |                                                                 |
-| conversation_id             | uuid → conversations on delete set null | request also posts into the lead thread                         |
-| proposed_times              | timestamptz[] not null                  | 1–3 options, each in the future, within 60 days. **Stored UTC** |
-| confirmed_time              | timestamptz null                        | must equal one of `proposed_times` or a dealer counter-time     |
-| duration_minutes            | smallint default 30                     | 15–120                                                          |
-| status                      | test_drive_status default `requested`   |                                                                 |
-| requester_note, dealer_note | text null                               | ≤ 1000                                                          |
-| created_at, updated_at      |                                         |                                                                 |
+| Column                      | Type                                  | Notes                                                                                              |
+| --------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| id                          | uuid PK                               |                                                                                                    |
+| listing_id                  | uuid → listings **on delete cascade** | must be a dealer listing that's `active` (RPC checks)                                              |
+| dealership_id               | uuid → dealerships on delete cascade  | denormalized from listing (by RPC) for simple RLS                                                  |
+| requester_id                | uuid → profiles on delete cascade     |                                                                                                    |
+| proposed_times              | timestamptz[] not null                | 1–3 options, each in the future, within 60 days. **Stored UTC**                                    |
+| confirmed_time              | timestamptz null                      | the dealer picks one of `proposed_times` or counters with another future time                      |
+| confirmed_end               | timestamptz null                      | `confirmed_time + duration`, stored because the exclusion constraint needs an immutable expression |
+| duration_minutes            | smallint default 30                   | 15–120                                                                                             |
+| status                      | test_drive_status default `requested` |                                                                                                    |
+| requester_note, dealer_note | text null                             | ≤ 1000                                                                                             |
+| created_at, updated_at      |                                       |                                                                                                    |
 
 - **Timezone safety:** everything is `timestamptz` (absolute instants). The UI renders in the **dealership's IANA timezone** with the zone label ("Sat Nov 2, 10:00 AM CDT"), never the browser's. The consumer's date/time picker input is interpreted in the dealership tz by `@carza/shared/logic/time.zonedToUtc`, unit-tested across DST transitions.
-- **No double-booking:** `exclude using gist (listing_id with =, tstzrange(confirmed_time, confirmed_time + make_interval(mins => duration_minutes)) with &&) where (status = 'confirmed')`.
+- **No double-booking:** `exclude using gist (listing_id with =, tstzrange(confirmed_time, confirmed_end) with &&) where (status = 'confirmed')`.
 - **Transitions only via RPC** (no update grant): `request_test_drive(listing_id, proposed_times, note)` → requested. `respond_test_drive(id, 'confirm'|'decline', time?, note?)` (dealer staff+). `cancel_test_drive(id)` (requester, or dealer). `complete_test_drive(id)` (dealer, after `confirmed_time`). Each checks the allowed from→to state and fires a notification. One open request per (listing, requester).
 - **RLS `select`:** requester, or `is_dealership_member(dealership_id)`. No direct insert/update/delete.
 - Indexes: `(dealership_id, status, created_at desc)`, `(requester_id, created_at desc)`, `(listing_id)`.
@@ -348,7 +348,8 @@ The model:
 
 | key text · window_start timestamptz · count int · PK (key, window_start) |
 
-- RLS enabled with **no policies** (not reachable through the API). It's accessed only by `check_rate_limit(bucket text)` (security definer). That function derives the key from `auth.uid()` itself and never trusts a caller-supplied identity, looks up the limit for `bucket` in an allow-listed table inside the function, and returns `boolean`. It deletes expired windows opportunistically. See 4.8.
+- RLS enabled with **no policies and no grants**, so it's not reachable through the API. It's used only by the internal `enforce_rate_limit(bucket)`, which is **not executable** by `anon`/`authenticated`. That function keys on `auth.uid()` itself (and refuses when it's null), reads limits from an allow-list inside the function, and raises SQLSTATE `CZ429` when over the limit. It deletes expired windows opportunistically.
+- **Called from inside the DB**: `before insert` triggers on `messages`, `listings`, `listing_photos`, `reports`, and inside the `start_conversation`/`request_test_drive`/`apply_for_dealership`/invitation RPCs. Because users can call the Supabase API directly with their own token, bypassing our Server Actions, a limit in the app layer alone would be decorative. See 4.8.
 
 ### 2.4 Storage buckets
 
@@ -419,7 +420,7 @@ requireAdmin()                                       // profiles.role = 'admin'
 **Supabase dashboard (carza-dev, later carza-prod)**
 
 - [ ] Auth → URL Configuration → **Site URL**: `http://localhost:3000` (dev) / `https://<prod-domain>` (prod).
-- [ ] **Redirect URLs** (dev project): `http://localhost:3000/**`, `https://carza-*-carzaapp.vercel.app/**` (preview wildcard). Prod: `https://<prod-domain>/**` only.
+- [ ] **Redirect URLs** (dev project): `http://localhost:3000/**` plus **exact** preview URLs, never a `*.vercel.app` wildcard. Supabase's `*` matches `-`, and anyone can create a Vercel project whose domain matches `carza-*-carzaapp.vercel.app`, which would let them receive auth codes. Best option: give previews a domain you own (Vercel → Settings → Domains, e.g. `*.preview.<yourdomain>`) and allow `https://*.preview.<yourdomain>/**`. Prod: `https://<prod-domain>/**` only.
 - [ ] Auth → Providers → Email: **Confirm email ON**, secure password change ON, minimum password length 10.
 - [ ] Auth → **SMTP**: configure **Resend SMTP** (`smtp.resend.com`, port 465, user `resend`, password = Resend API key). _The built-in SMTP only delivers to your team's addresses and is heavily rate-limited, so sign-up will look broken without this._
 - [ ] Auth → Email Templates: paste `supabase/templates/confirm.html` and `recovery.html`. They link to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`, which the SSR flow requires.
@@ -448,7 +449,7 @@ requireAdmin()                                       // profiles.role = 'admin'
 
 **Vercel**
 
-- [ ] Connect the `carza` project (already created, root dir `apps/web`) to the GitHub repo: Project → Settings → Git.
+- [ ] Connect the `carza` project (already created, root dir `apps/web`; `ENABLE_EXPERIMENTAL_COREPACK=1` already set so Vercel uses the pinned pnpm) to the GitHub repo: Project → Settings → Git. Keep "Include files outside the root directory" on.
 - [ ] Env vars (Preview = dev values, Production = prod values): see `.env.example`.
 
 **Resend**
@@ -478,7 +479,7 @@ export type ErrorCode = 'UNAUTHENTICATED' | 'FORBIDDEN' | 'VALIDATION' | 'NOT_FO
 
 // apps/web/src/lib/action.ts
 export const createListing = action(
-  { schema: createListingSchema, auth: 'required', rateLimit: 'listing_create' },
+  { schema: createListingSchema, auth: 'required' },
   async (input, { user, supabase }) => { … return { id }; },
 );
 ```
@@ -487,9 +488,8 @@ Steps the wrapper performs, in order:
 
 1. Zod `safeParse(rawInput)` → `VALIDATION` with `fieldErrors` (flattened) on failure.
 2. Auth (`required` | `optional`) via `getUser()` → `UNAUTHENTICATED`.
-3. Optional `rateLimit` bucket → `check_rate_limit` → `RATE_LIMITED`.
-4. Run the handler with `{ user, supabase }`.
-5. Catch: a thrown `ActionError(code, message)` passes through as-is. A Postgres error is mapped (`42501`/RLS → `FORBIDDEN`, `23505` → `CONFLICT`, `23P01` exclusion → `CONFLICT` "That time was just booked", `P0001` from our RPCs → its message, which we author). **Anything else → `INTERNAL` "Something went wrong"** plus a server log with a correlation id, which is included in the message so support can find it.
+3. Run the handler with `{ user, supabase }`.
+4. Catch: a thrown `ActionError(code, message)` passes through as-is. A Postgres error is mapped (`42501`/RLS → `FORBIDDEN`, `23505` → `CONFLICT`, `23P01` exclusion → `CONFLICT` "That time was just booked", `CZ429` → `RATE_LIMITED`, `P0001` from our RPCs → its message, which we author). **Anything else → `INTERNAL` "Something went wrong"** plus a server log with a correlation id, which is included in the message so support can find it.
 
 - Never throws to the client and never leaks stack traces or SQL text. `redirect()`/`notFound()` are re-thrown (Next control flow).
 - Also accepts `FormData` (converted with a small `formDataToObject` helper) so `<form action>` works.
@@ -532,9 +532,9 @@ Steps the wrapper performs, in order:
 ### 4.8 Rate limiting
 
 - **Auth:** Supabase Auth's built-in per-IP limits (they work because auth calls come from the browser), plus optional Turnstile CAPTCHA.
-- **App actions:** a Postgres fixed-window limiter (`check_rate_limit(bucket)`, 2.3), called by `action()` before the handler. It's keyed on `auth.uid()` inside the DB, so it can't be spoofed. Initial buckets:
-  - `message_send` 30/min and 300/day · `conversation_start` 10/hour and 30/day · `listing_create` 10/day (private), 500/day (dealer, for CSV) · `photo_upload` 200/hour · `test_drive_request` 5/hour and 10/day · `report_create` 20/day · `dealer_apply` 3/day · `invite_send` 50/day.
-- Why Postgres rather than Upstash/Redis: no new vendor or dependency, it's transactional with our data, and at one-metro scale a Postgres write per action is nothing. Swap path: same `check_rate_limit` interface backed by Upstash if we ever need it.
+- **App writes:** a Postgres fixed-window limiter enforced **inside the database** by triggers and RPCs (2.3). It's keyed on `auth.uid()`, so it can't be spoofed, and it can't be skipped by calling the Supabase API directly. `action()` just maps `CZ429` to `RATE_LIMITED`. Initial buckets:
+  - `message_send` 30/min and 300/day · `conversation_start` 10/hour and 30/day · `listing_create` 10/day (private), 1000/day (dealer listings, keyed per user, for CSV) · `photo_upload` 200/hour · `test_drive_request` 5/hour and 10/day · `report_create` 20/day · `dealer_apply` 3/day · `invite_send` 50/day.
+- Why Postgres rather than Upstash/Redis: no new vendor or dependency, it's transactional with our data, and at one-metro scale a Postgres write per action is nothing. Swap path: same `enforce_rate_limit` interface backed by Upstash if we ever need it.
 
 ### 4.9 Security headers + CSP
 
@@ -579,7 +579,7 @@ job db:      supabase/setup-cli (pinned) → supabase start → supabase db rese
 job e2e:     (stage 6) supabase start → build → playwright
 ```
 
-- pnpm store and Turbo caches are cached. Concurrency: cancel superseded runs on the same PR.
+- The pnpm store is cached (`setup-node`). Concurrency: cancel superseded runs on the same PR. Actions are pinned to commit SHAs, and Dependabot bumps them weekly.
 - CI never sees a real secret. Local Supabase keys are well-known dev defaults.
 
 ### 5.3 Seed data (`supabase/seed.sql`, dev only)
@@ -589,7 +589,7 @@ job e2e:     (stage 6) supabase start → build → playwright
 - **3 dealerships:** a franchise Toyota/Honda store (verified), an independent used-car lot (verified), and a luxury/EV specialist (**pending**, so the pending-state UI is visible). Each has owner/admin/staff members.
 - **~60 listings:** ~45 dealer (mix of new/used/certified) and ~15 private, with real makes/models, sensible year/mileage/price relationships, and statuses spread across active/pending/sold/draft.
 - **Conversations:** ~12 (consumer↔dealer and consumer↔consumer) with 3–8 messages each. **Test drives:** ~8 across all statuses, with times in dealership-local business hours. Plus a few saved listings, notifications, and 2 open reports.
-- **Photos:** generated placeholder images (solid color + make/model text) committed under `supabase/seed-assets/` and uploaded by the CLI's storage seeding (`[storage.buckets.*] objects_path`). No copyrighted car photos.
+- **Photos:** none. Storage paths must start with the listing's id (a security rule we don't loosen for seed data), and the UI has a proper no-photo placeholder. Upload a few by hand locally if you want to see photo layouts.
 
 ---
 
@@ -601,30 +601,30 @@ Version note: these were checked against npm on 2026-10-24. **TypeScript is pinn
 
 ### Stage 1: `chore/monorepo-scaffold`
 
-**Files:** root `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `.gitignore`, `.nvmrc`, `.prettierrc`, `.editorconfig`, `vitest.config.ts`; `packages/config/{tsconfig,eslint,tailwind}`; `packages/shared` (result type, `safeNextPath`, constants + tests); `packages/db` (package skeleton, placeholder `Database` type); `apps/web` (Next app: `next.config.ts`, `env.ts`, root layout, a minimal home page, `globals.css`, `not-found`, `error`); `.github/workflows/ci.yml`; `.env.example` (renamed keys).
+**Files:** root `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `.gitignore`, `.nvmrc`, `.prettierrc`, `.editorconfig`, `vitest.config.ts`; `packages/config/{tsconfig,eslint,tailwind}`; `packages/shared` (result type, `safeNextPath` + tests; enum constants come with stage 2); `.github/dependabot.yml`; `packages/db` (package skeleton, placeholder `Database` type); `apps/web` (Next app: `next.config.ts`, `env.ts`, root layout, a minimal home page, `globals.css`, `not-found`, `error`); `.github/workflows/ci.yml`; `.env.example` (renamed keys).
 
 **Dependencies:**
 
-| Package                                             | Where                   | Why                                                                              |
-| --------------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------- |
-| `turbo`                                             | root dev                | task pipeline + caching across packages                                          |
-| `typescript@~6.0`                                   | root dev                | strict TS; 6.x because typescript-eslint doesn't support 7                       |
-| `prettier`                                          | root dev                | one formatter, no style debates in review                                        |
-| `vitest`                                            | root dev                | unit + RLS test runner (per CLAUDE.md)                                           |
-| `vite`                                              | root dev                | required peer of Vitest 5 (not used directly)                                    |
-| `@types/node`                                       | root dev                | Node types for configs/scripts                                                   |
-| `eslint`, `typescript-eslint`, `eslint-config-next` | packages/config         | lint rules (Next's includes react, hooks, a11y, import)                          |
-| `next`, `react`, `react-dom`                        | apps/web                | the framework                                                                    |
-| `@types/react`, `@types/react-dom`                  | apps/web dev            | React types                                                                      |
-| `tailwindcss`, `@tailwindcss/postcss`               | apps/web dev            | Tailwind v4 + its PostCSS plugin (Next uses PostCSS)                             |
-| `server-only`                                       | apps/web                | build-time guard that server modules (secret key, email) never reach the browser |
-| `zod`                                               | packages/shared (+ web) | validation at every boundary (per CLAUDE.md)                                     |
+| Package                                             | Where                   | Why                                                                                                                              |
+| --------------------------------------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `turbo`                                             | root dev                | task pipeline + caching across packages                                                                                          |
+| `typescript@~6.0`                                   | root dev                | strict TS; 6.x because typescript-eslint doesn't support 7                                                                       |
+| `prettier`                                          | root dev                | one formatter, no style debates in review                                                                                        |
+| `vitest`                                            | root dev                | unit + RLS test runner (per CLAUDE.md)                                                                                           |
+| `vite`                                              | root dev                | required peer of Vitest 5 (not used directly)                                                                                    |
+| `@types/node`                                       | root dev                | Node types for configs/scripts                                                                                                   |
+| `eslint`, `typescript-eslint`, `eslint-config-next` | packages/config         | lint rules (Next's includes react, hooks, a11y, import). `eslint` + `typescript` are also devDeps of each package that runs them |
+| `next`, `react`, `react-dom`                        | apps/web                | the framework                                                                                                                    |
+| `@types/react`, `@types/react-dom`                  | apps/web dev            | React types                                                                                                                      |
+| `tailwindcss`, `@tailwindcss/postcss`               | apps/web dev            | Tailwind v4 + its PostCSS plugin (Next uses PostCSS)                                                                             |
+| `server-only`                                       | apps/web                | build-time guard that server modules (secret key, email) never reach the browser                                                 |
+| `zod`                                               | packages/shared (+ web) | validation at every boundary (per CLAUDE.md)                                                                                     |
 
 **Acceptance:** `pnpm i && pnpm typecheck && pnpm lint && pnpm test && pnpm build` green from a clean clone. `pnpm build` fails with a clear message when a required env var is missing. CI workflow runs the `checks` job. The Vercel preview builds (once env vars are set).
 
 ### Stage 2: `feat/db-foundation`
 
-**Files:** `supabase/config.toml`; `supabase/migrations/…_extensions_and_helpers.sql`, `…_enums.sql`, `…_reference_makes_models.sql`, `…_profiles.sql`, `…_dealerships.sql`, `…_vehicles_listings.sql`, `…_messaging.sql`, `…_test_drives.sql`, `…_notifications_reports.sql`, `…_rate_limits.sql`, `…_storage.sql`, `…_search.sql`; `supabase/seed.sql` + `seed-assets/`; `supabase/templates/*.html`; `packages/db/src/database.types.ts` (generated), `queries/*.ts`; `packages/db/tests/rls/*.test.ts`; CI `db` job.
+**Files:** `supabase/config.toml`; `supabase/migrations/…_extensions_and_helpers.sql`, `…_enums.sql`, `…_reference_makes_models.sql`, `…_profiles.sql`, `…_dealerships.sql`, `…_vehicles_listings.sql`, `…_messaging.sql`, `…_test_drives.sql`, `…_notifications_reports.sql`, `…_rate_limits.sql`, `…_storage.sql`, `…_search.sql`; `supabase/seed.sql`; `supabase/templates/*.html`; `packages/db/src/database.types.ts` (generated), `queries/*.ts`; `packages/db/tests/rls/*.test.ts`; CI `db` job.
 
 **Dependencies:**
 | `@supabase/supabase-js` | packages/db | typed client used by queries + RLS tests |

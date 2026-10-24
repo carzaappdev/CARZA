@@ -1,9 +1,10 @@
 // Shared flat ESLint config for TypeScript packages (no React).
+import { defineConfig } from 'eslint/config';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default defineConfig(
   { ignores: ['**/node_modules/**', '**/.next/**', '**/dist/**', '**/database.types.ts'] },
-  ...tseslint.configs.strict,
+  tseslint.configs.strict,
   {
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',

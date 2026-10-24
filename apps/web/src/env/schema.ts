@@ -3,7 +3,7 @@ import { z } from 'zod';
 /**
  * Single source of truth for environment variables.
  * - `clientSchema`: NEXT_PUBLIC_* only. Inlined into the browser bundle. Never put secrets here.
- * - `serverSchema`: server-only secrets. Read through `@/env/server` (guarded by `server-only`).
+ * - `makeServerSchema`: server-only secrets. Read through `@/env/server` (guarded by `server-only`).
  * `next.config.ts` calls `validateEnv` so a missing/invalid variable fails `next dev` and `next build`.
  */
 export const clientSchema = z.object({
@@ -15,7 +15,7 @@ export const clientSchema = z.object({
 const isProductionDeploy = (source: Record<string, string | undefined>) =>
   source.VERCEL_ENV === 'production';
 
-export const serverSchema = (production: boolean) =>
+export const makeServerSchema = (production: boolean) =>
   z.object({
     // Optional until a feature truly needs to bypass RLS. Never exposed to the browser.
     SUPABASE_SECRET_KEY: z.string().min(20).optional(),
@@ -28,7 +28,7 @@ export const serverSchema = (production: boolean) =>
 
 /** Validates everything at once and throws a readable error listing every problem. */
 export function validateEnv(source: Record<string, string | undefined>) {
-  const schema = clientSchema.extend(serverSchema(isProductionDeploy(source)).shape);
+  const schema = clientSchema.extend(makeServerSchema(isProductionDeploy(source)).shape);
   // Treat empty strings (e.g. `KEY=` copied from .env.example) as missing.
   const cleaned = Object.fromEntries(
     Object.entries(source).map(([k, v]) => [k, v === '' ? undefined : v]),

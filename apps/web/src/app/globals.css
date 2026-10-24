@@ -1,4 +1,2 @@
 @import 'tailwindcss';
 @import '@carza/config/tailwind/theme.css';
-
-@source '../../../../packages/shared/src';

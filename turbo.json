@@ -1,19 +1,18 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "stream",
-  "globalEnv": [
-    "NODE_ENV",
-    "VERCEL_ENV",
-    "NEXT_PUBLIC_SUPABASE_URL",
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "NEXT_PUBLIC_SITE_URL",
-    "SUPABASE_SECRET_KEY",
-    "RESEND_API_KEY",
-    "EMAIL_FROM"
-  ],
+  "globalPassThroughEnv": ["NEXT_TELEMETRY_DISABLED"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
+      "env": [
+        "NEXT_PUBLIC_*",
+        "VERCEL_ENV",
+        "SUPABASE_SECRET_KEY",
+        "RESEND_API_KEY",
+        "EMAIL_FROM",
+        "SKIP_ENV_VALIDATION"
+      ],
       "outputs": [".next/**", "!.next/cache/**"]
     },
     "typecheck": {
