@@ -112,7 +112,8 @@ Conventions (enforced in review):
 - `uuid` PKs (`gen_random_uuid()`), `created_at`/`updated_at timestamptz not null default now()`, and a shared `set_updated_at()` trigger.
 - Every table has `enable row level security` and **separate policies per operation**. No `using (true)` on writes.
 - Policies call `(select auth.uid())` (wrapped so Postgres evaluates it once per query).
-- Helper functions are `security definer`, `set search_path = ''`, `stable`, and fully schema-qualified.
+- Helper functions are `security definer`, `set search_path = ''`, `stable`, and fully schema-qualified. They live in a **`private` schema** that the Data API doesn't expose, so policies can call them but nobody can call them over HTTP. Only the intended RPCs live in `public`.
+- Every table starts with `revoke all … from anon, authenticated`, then grants exactly what's needed (often column by column). Grants and RLS are two separate layers.
 - Money: `price_cents bigint`. Distances: meters in the DB, miles in the UI (conversion in `@carza/shared`).
 - Status transitions that have rules (test drives, dealer verification) go through **RPC functions**.
   The table itself doesn't grant `update` on those columns.
@@ -212,7 +213,7 @@ These are seeded **in a migration** (they're reference data and prod needs them 
 
 - **RLS:** `select` for members of the same dealership. `insert` only via `accept_dealership_invitation` RPC. `update` (role change) and `delete` (remove) by owner/admin. Admins can't touch owners, and the last owner can't be removed or demoted (trigger guard). A member can delete their own row (leave), except the last owner.
 - Index: `(user_id)` for "my dealerships".
-- Helper: `public.dealer_role_rank(dealer_role)`, and **`public.is_dealership_member(dealership_id uuid, min_role dealer_role default 'staff') returns boolean`** (security definer, stable). Used by nearly every dealer policy.
+- Helper: **`private.is_dealership_member(dealership_id uuid, min_role dealer_role default 'staff') returns boolean`** (security definer, stable; compares roles by enum order). Used by nearly every dealer policy.
 
 #### `dealership_invitations` (needed for `/dealer/[id]/team`)
 
@@ -695,7 +696,7 @@ Rejected alternatives: Prisma/Drizzle (they'd duplicate RLS-aware access; supaba
 | 1   | **RLS mistakes leak private data** (messages, exact locations, drafts)                                                                 | Per-table allow/deny test matrix in CI. Privileged writes via audited RPCs. `security-auditor` every stage. Supabase advisors after each apply. Private columns live in separate tables or views, never "hidden in the UI"             |
 | 2   | **Auth email deliverability / OAuth misconfig** blocks sign-ups (default SMTP, Apple secret expiry, redirect URL mismatch on previews) | Resend SMTP is in the checklist. Wildcard preview redirect URLs. 6-month Apple reminder. Stage 6 smoke test runs on a real preview                                                                                                     |
 | 3   | **Scams/spam in messaging** (fake listings, off-platform payment requests)                                                             | Reports with snapshots from day one. Rate limits on conversation start and messages. Listing-only conversation start. Later: link/phone-number detection + warning banner (not in foundation)                                          |
-| 4   | **Search performance or cost as inventory grows** (joins + offset pagination + image optimization)                                     | GIST and B-tree indexes from day one. Offset capped. `EXPLAIN` checked on seeded data in stage 2. Scale path documented: denormalized `listing_search` materialized table + keyset pagination. Monitor Vercel image optimization usage |
+| 4   | **Search performance or cost as inventory grows** (joins + offset pagination + image optimization)                                     | GIST and B-tree indexes from day one. Offset capped. Plans checked on seeded data in stage 2 (at 60 rows the planner prefers B-tree; GIST takes over as volume grows). Scale path documented: denormalized `listing_search` materialized table + keyset pagination. Monitor Vercel image optimization usage |
 | 5   | **Timezone bugs in test drives** (DST, browser vs dealer tz)                                                                           | `timestamptz` only, rendered in the dealership's IANA tz with a label. Conversion in one shared function with DST unit tests. Exclusion constraint prevents overlapping confirmed bookings                                             |
 
 Also tracked (lower): orphaned storage objects (cleanup job later); Supabase free-tier pausing on dev after inactivity; the `{{METRO}}` choice affecting seed geography only.
