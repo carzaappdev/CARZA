@@ -77,6 +77,9 @@ export function SearchFilters({
     // Two decimals (~1 km) is plenty for a radius search and keeps exact positions out of URLs.
     lat.current.value = coords ? coords.lat.toFixed(2) : '';
     lng.current.value = coords ? coords.lng.toFixed(2) : '';
+    // "Closest first" means nothing without a location.
+    const sort = form.elements.namedItem('sort');
+    if (!coords && sort instanceof HTMLInputElement && sort.value === 'distance') sort.value = '';
     submit(form);
   }
 

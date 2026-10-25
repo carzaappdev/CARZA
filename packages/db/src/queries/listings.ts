@@ -31,11 +31,10 @@ export type ListingDetail = NonNullable<Awaited<ReturnType<typeof getListing>>>;
 export async function getVehicleCatalog(client: TypedClient) {
   const [makes, models] = await Promise.all([
     client.from('vehicle_makes').select('id, name, slug').order('name'),
-    client.from('vehicle_models').select('id, make_id, name, slug').order('name'),
+    // ~450 rows today; the explicit range keeps PostgREST's default 1000-row cap from silently cutting it.
+    client.from('vehicle_models').select('id, make_id, name, slug').order('name').range(0, 4999),
   ]);
   if (makes.error) throw makes.error;
   if (models.error) throw models.error;
   return { makes: makes.data, models: models.data };
 }
-
-export type VehicleCatalog = Awaited<ReturnType<typeof getVehicleCatalog>>;

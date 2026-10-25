@@ -8,6 +8,7 @@ import {
   hasLocation,
   matchVehicleQuery,
   parseSearchFilters,
+  searchHref,
   toSearchArgs,
   toSearchQuery,
   type SearchFilters as Filters,
@@ -23,10 +24,7 @@ export const metadata: Metadata = {
   description: 'Search cars for sale from local dealers and private sellers.',
 };
 
-const href = (f: Filters, patch: Partial<Filters> = {}) => {
-  const query = toSearchQuery(f, patch);
-  return (query ? `/search?${query}` : '/search') as Route;
-};
+const href = (f: Filters, patch: Partial<Filters> = {}) => searchHref(f, patch) as Route;
 
 export default async function SearchPage({ searchParams }: PageProps<'/search'>) {
   const filters = parseSearchFilters(await searchParams);
@@ -52,8 +50,13 @@ export default async function SearchPage({ searchParams }: PageProps<'/search'>)
   const make = makes.find((m) => m.slug === filters.make);
   const makeModels = make ? models.filter((m) => m.make_id === make.id) : [];
   const model = makeModels.find((m) => m.slug === filters.model);
-  // Unknown slugs are ignored rather than matching nothing.
-  const applied: Filters = { ...filters, make: make?.slug, model: model?.slug };
+  // Unknown slugs are ignored rather than matching nothing; "closest first" needs a location.
+  const applied: Filters = {
+    ...filters,
+    make: make?.slug,
+    model: model?.slug,
+    sort: filters.sort === 'distance' && !hasLocation(filters) ? undefined : filters.sort,
+  };
 
   const supabase = await createClient();
   const { rows, total } = await searchListings(

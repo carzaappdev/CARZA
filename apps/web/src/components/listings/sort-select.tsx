@@ -6,7 +6,7 @@ import {
   SEARCH_SORTS,
   SORT_LABELS,
   hasLocation,
-  toSearchQuery,
+  searchHref,
   type SearchFilters,
   type SearchSort,
 } from '@carza/shared';
@@ -21,11 +21,9 @@ export function SortSelect({ filters }: { filters: SearchFilters }) {
         value={filters.sort ?? 'newest'}
         className="border-input bg-background h-10 rounded-md border px-2 text-sm"
         onChange={(e) => {
-          const query = toSearchQuery(filters, {
-            sort: e.target.value as SearchSort,
-            page: undefined,
-          });
-          router.push(`/search${query ? `?${query}` : ''}` as Route);
+          router.push(
+            searchHref(filters, { sort: e.target.value as SearchSort, page: undefined }) as Route,
+          );
         }}
       >
         {sorts.map((s) => (

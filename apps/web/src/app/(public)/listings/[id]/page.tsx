@@ -46,10 +46,10 @@ export async function generateMetadata({ params }: PageProps<'/listings/[id]'>):
 }
 
 const STATUS_NOTICE: Partial<Record<ListingDetail['status'], string>> = {
-  draft: 'This is a draft. Only you can see it until it’s published.',
+  draft: 'This is a draft. It isn’t public until it’s published.',
   pending: 'Sale pending. The seller has an offer on this car.',
   sold: 'This car has been sold.',
-  removed: 'This listing was removed and is only visible to you.',
+  removed: 'This listing was removed. It isn’t public anymore.',
 };
 
 export default async function ListingPage({ params }: PageProps<'/listings/[id]'>) {

@@ -24,8 +24,8 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   images: {
-    // Only the local Supabase stack (127.0.0.1) is a private IP; hosted projects are public hosts.
-    dangerouslyAllowLocalIP: supabaseUrl?.hostname === '127.0.0.1',
+    // Only the local Supabase stack is on a private IP; hosted projects are public hosts.
+    dangerouslyAllowLocalIP: ['127.0.0.1', 'localhost'].includes(supabaseUrl?.hostname ?? ''),
     remotePatterns: supabaseUrl
       ? [
           {

@@ -156,3 +156,9 @@ export function toSearchQuery(f: SearchFilters, patch: Partial<SearchFilters> = 
   }
   return parts.join('&');
 }
+
+/** `/search` link for these filters (see toSearchQuery). */
+export function searchHref(f: SearchFilters, patch: Partial<SearchFilters> = {}) {
+  const query = toSearchQuery(f, patch);
+  return query ? `/search?${query}` : '/search';
+}
