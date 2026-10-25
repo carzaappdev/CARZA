@@ -19,6 +19,7 @@ export function ResetPasswordForm() {
     );
     if (!parsed.success) return setErrors(fieldErrors(parsed.error));
     setErrors({});
+    setFormError(null);
     setPending(true);
     // The link comes from the email template (supabase/templates/recovery.html) → /update-password.
     const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email);

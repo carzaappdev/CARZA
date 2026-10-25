@@ -31,29 +31,26 @@ export function OAuthButtons({ next }: { next: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      {PROVIDERS.map((p) => (
-        <button
-          key={p.id}
-          type="button"
-          disabled={pending !== null}
-          onClick={() => signIn(p.id)}
-          className="border-input hover:bg-accent h-11 rounded-md border font-medium disabled:opacity-60"
-        >
-          {pending === p.id ? 'Redirecting…' : p.label}
-        </button>
-      ))}
-      {error ? <FormMessage tone="error">{error}</FormMessage> : null}
-    </div>
-  );
-}
-
-export function Divider() {
-  return (
-    <div className="text-muted-foreground flex items-center gap-3 text-xs uppercase">
-      <span className="bg-border h-px flex-1" />
-      or
-      <span className="bg-border h-px flex-1" />
-    </div>
+    <>
+      <div className="flex flex-col gap-2">
+        {PROVIDERS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            disabled={pending !== null}
+            onClick={() => signIn(p.id)}
+            className="border-input hover:bg-accent h-11 rounded-md border font-medium disabled:opacity-60"
+          >
+            {pending === p.id ? 'Redirecting…' : p.label}
+          </button>
+        ))}
+        {error ? <FormMessage tone="error">{error}</FormMessage> : null}
+      </div>
+      <div className="text-muted-foreground flex items-center gap-3 text-xs uppercase">
+        <span className="bg-border h-px flex-1" />
+        or
+        <span className="bg-border h-px flex-1" />
+      </div>
+    </>
   );
 }

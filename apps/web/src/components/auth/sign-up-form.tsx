@@ -30,7 +30,10 @@ export function SignUpForm() {
     setPending(false);
     // "Already registered" gets the same response as success, so this form can't be used to test which
     // emails have accounts. (The API itself still leaks it; CAPTCHA on sign-up mitigates scripted probing.)
-    if (error && error.code !== 'user_already_exists')
+    // The email-throttle error is neutral too: otherwise a quick double submit would reveal whether the
+    // first one created an account.
+    const neutral = ['user_already_exists', 'over_email_send_rate_limit'];
+    if (error && !neutral.includes(error.code ?? ''))
       return setFormError(authErrorMessage(error.code));
     setSentTo(email);
   }

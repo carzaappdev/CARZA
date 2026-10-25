@@ -30,7 +30,12 @@ export default async function ConfirmPage({ searchParams }: { searchParams: Para
             You&apos;re currently signed in as {current.email}. Continuing will switch to the
             account this link belongs to.
           </p>
-        ) : null}
+        ) : (
+          <p className="text-muted-foreground text-sm">
+            Only continue if you asked Carza for this email just now. If someone sent you this link,
+            close this page.
+          </p>
+        )}
         <form action={confirmEmailLink} className="flex flex-col">
           <input type="hidden" name="token_hash" value={tokenHash} />
           <input type="hidden" name="type" value={type} />
