@@ -123,7 +123,8 @@ export async function getSavedListings(client: TypedClient): Promise<ListingSumm
         seller:profiles!listings_seller_user_id_fkey ( display_name )
       )`,
     )
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(100);
   if (error) throw error;
   return data.flatMap(({ listing: l }) => {
     if (!l) return [];

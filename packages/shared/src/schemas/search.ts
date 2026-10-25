@@ -30,6 +30,9 @@ export type SearchSort = (typeof SEARCH_SORTS)[number];
 export const SELLER_TYPES = ['private', 'dealer'] as const;
 export type SellerType = (typeof SELLER_TYPES)[number];
 
+/** A five-digit US ZIP code. */
+export const ZIP_CODE = /^\d{5}$/;
+
 export const SEARCH_RADIUS_MILES = [10, 25, 50, 100, 250, 500] as const;
 export const DEFAULT_SEARCH_RADIUS_MILES = 50;
 export const SEARCH_PAGE_SIZE = 24;
@@ -94,16 +97,7 @@ export const searchFiltersSchema = z.object({
   condition: oneOf<ListingCondition>(LISTING_CONDITIONS),
   seller: oneOf<SellerType>(SELLER_TYPES),
   /** A US ZIP code to search around. The page looks up its coordinates. */
-  zip: z
-    .preprocess(
-      first,
-      z
-        .string()
-        .trim()
-        .regex(/^\d{5}$/)
-        .optional(),
-    )
-    .catch(undefined),
+  zip: z.preprocess(first, z.string().trim().regex(ZIP_CODE).optional()).catch(undefined),
   /** Coordinates from "Use my location" (rounded by the browser). */
   lat: num(-90, 90),
   lng: num(-180, 180),
