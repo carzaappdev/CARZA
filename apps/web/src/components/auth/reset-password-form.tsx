@@ -21,8 +21,10 @@ export function ResetPasswordForm() {
     setErrors({});
     setFormError(null);
     setPending(true);
-    // The link comes from the email template (supabase/templates/recovery.html) → /update-password.
-    const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email);
+    // The link returns via /auth/callback (PKCE) and lands on /update-password.
+    const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+    });
     setPending(false);
     // Rate limits are worth surfacing; anything else gets the neutral message (no account enumeration).
     if (error?.code?.startsWith('over_')) return setFormError(authErrorMessage(error.code));
