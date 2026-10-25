@@ -6,3 +6,6 @@ export * from './logic/geo';
 export * from './schemas/auth';
 export * from './logic/auth-errors';
 export * from './logic/roles';
+export * from './schemas/search';
+export * from './logic/format';
+export * from './logic/vehicle-query';
