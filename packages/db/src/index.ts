@@ -16,3 +16,4 @@ export type TablesUpdate<T extends keyof PublicSchema['Tables']> =
 export type Enums<T extends keyof PublicSchema['Enums']> = PublicSchema['Enums'][T];
 
 export * from './queries/search';
+export * from './queries/listings';

@@ -16,8 +16,27 @@ const securityHeaders = [
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
 ];
 
+// Listing photos come from the public Supabase Storage buckets.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL)
+  : undefined;
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  images: {
+    // Only the local Supabase stack (127.0.0.1) is a private IP; hosted projects are public hosts.
+    dangerouslyAllowLocalIP: supabaseUrl?.hostname === '127.0.0.1',
+    remotePatterns: supabaseUrl
+      ? [
+          {
+            protocol: supabaseUrl.protocol === 'https:' ? 'https' : 'http',
+            hostname: supabaseUrl.hostname,
+            port: supabaseUrl.port,
+            pathname: '/storage/v1/object/public/**',
+          },
+        ]
+      : [],
+  },
   headers: async () => [{ source: '/:path*', headers: securityHeaders }],
   poweredByHeader: false,
   typedRoutes: true,
