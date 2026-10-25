@@ -12,7 +12,10 @@ export default function ResetPasswordPage() {
         Enter your email and we&apos;ll send you a reset link.
       </p>
       <ResetPasswordForm />
-      <Link href="/sign-in" className="text-primary text-sm">
+      <Link
+        href="/sign-in"
+        className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black text-sm"
+      >
         Back to sign in
       </Link>
     </div>

@@ -13,7 +13,8 @@ const PROVIDERS = [
     id: 'google',
     label: 'Continue with Google',
     Icon: GoogleIcon,
-    className: 'border border-[#747775] bg-white text-[#1F1F1F] hover:bg-[#F8F9FA]',
+    className:
+      'border border-[#dadce0] bg-white text-[#1F1F1F] hover:border-[#747775] hover:bg-[#F8F9FA]',
   },
   {
     id: 'apple',
@@ -52,7 +53,7 @@ export function OAuthButtons({ next }: { next: string }) {
             type="button"
             disabled={pending !== null}
             onClick={() => signIn(p.id)}
-            className={`focus-visible:ring-ring flex h-11 items-center justify-center gap-3 rounded-md px-4 font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60 ${p.className}`}
+            className={`focus-visible:ring-ring flex h-12 items-center justify-center gap-3 rounded-xl px-4 font-medium transition outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60 ${p.className}`}
           >
             <p.Icon />
             <span>{pending === p.id ? 'Redirecting…' : p.label}</span>
@@ -60,7 +61,7 @@ export function OAuthButtons({ next }: { next: string }) {
         ))}
         {error ? <FormMessage tone="error">{error}</FormMessage> : null}
       </div>
-      <div className="text-muted-foreground flex items-center gap-3 text-xs uppercase">
+      <div className="text-muted-foreground flex items-center gap-3 text-xs tracking-wider uppercase">
         <span className="bg-border h-px flex-1" />
         or
         <span className="bg-border h-px flex-1" />

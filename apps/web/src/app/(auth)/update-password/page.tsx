@@ -17,7 +17,10 @@ export default async function UpdatePasswordPage() {
           For your security, we need to confirm it&apos;s you. We&apos;ll email you a link to set a
           new password.
         </p>
-        <Link href="/reset-password" className="text-primary font-medium">
+        <Link
+          href="/reset-password"
+          className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+        >
           Send me a reset link
         </Link>
       </div>

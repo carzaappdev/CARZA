@@ -22,7 +22,10 @@ export default async function SignInPage({ searchParams }: { searchParams: AuthS
       <SignInForm next={next} initialError={error} />
       <p className="text-muted-foreground text-sm">
         New to Carza?{' '}
-        <Link href={{ pathname: '/sign-up', query: { next } }} className="text-primary font-medium">
+        <Link
+          href={{ pathname: '/sign-up', query: { next } }}
+          className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+        >
           Create an account
         </Link>
       </p>
