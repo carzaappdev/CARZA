@@ -35,9 +35,13 @@ export default async function HomePage() {
               name="q"
               type="search"
               placeholder="Make, model or keyword"
-              className="h-12 flex-1 rounded-full bg-white px-5 text-base text-neutral-900 outline-none placeholder:text-neutral-500 focus-visible:ring-[3px] focus-visible:ring-white/50"
+              className="h-12 min-w-0 flex-1 rounded-full bg-white px-5 text-base text-neutral-900 outline-none placeholder:text-neutral-500 focus-visible:ring-[3px] focus-visible:ring-white/50"
             />
-            <Button type="submit" size="lg" variant="secondary" className="h-12 rounded-full">
+            <Button
+              type="submit"
+              size="lg"
+              className="h-12 shrink-0 rounded-full bg-white text-neutral-900 hover:bg-white/90"
+            >
               Search
             </Button>
           </form>
