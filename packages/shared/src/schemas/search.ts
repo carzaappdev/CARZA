@@ -12,6 +12,7 @@ import {
   type Transmission,
 } from '../constants/enums';
 import { LIMITS } from '../constants/limits';
+import type { LatLng } from '../logic/geo';
 
 // Search filters live in the URL (shareable, server-rendered). The same schema will parse the mobile app's
 // params. Parsing is forgiving: a bad or tampered value is dropped, never an error page.
@@ -92,6 +93,18 @@ export const searchFiltersSchema = z.object({
   trans: listOf<Transmission>(TRANSMISSIONS),
   condition: oneOf<ListingCondition>(LISTING_CONDITIONS),
   seller: oneOf<SellerType>(SELLER_TYPES),
+  /** A US ZIP code to search around. The page looks up its coordinates. */
+  zip: z
+    .preprocess(
+      first,
+      z
+        .string()
+        .trim()
+        .regex(/^\d{5}$/)
+        .optional(),
+    )
+    .catch(undefined),
+  /** Coordinates from "Use my location" (rounded by the browser). */
   lat: num(-90, 90),
   lng: num(-180, 180),
   radius: int(1, LIMITS.searchRadiusMilesMax),
@@ -105,22 +118,30 @@ export function parseSearchFilters(params: Record<string, unknown>): SearchFilte
   return searchFiltersSchema.parse(params);
 }
 
-export const hasLocation = (f: SearchFilters) => f.lat !== undefined && f.lng !== undefined;
+const hasCoords = (f: SearchFilters) => f.lat !== undefined && f.lng !== undefined;
+
+/** Whether the search is centered somewhere (a ZIP code or the device's location). */
+export const hasLocation = (f: SearchFilters) => f.zip !== undefined || hasCoords(f);
 
 /**
- * Filters → `search_listings` RPC args. Make/model arrive as slugs in the URL, so the caller passes the ids
- * it resolved. Shape matches the generated RPC types in @carza/db.
+ * Filters → `search_listings` RPC args. Make/model arrive as slugs and the location may be a ZIP code, so
+ * the caller passes the ids and the origin it resolved. Shape matches the generated RPC types in @carza/db.
  */
-export function toSearchArgs(f: SearchFilters, ids: { makeId?: number; modelId?: number } = {}) {
-  const located = hasLocation(f);
+export function toSearchArgs(
+  f: SearchFilters,
+  resolved: { makeId?: number; modelId?: number; origin?: LatLng } = {},
+) {
+  const origin =
+    resolved.origin ??
+    (f.lat !== undefined && f.lng !== undefined ? { lat: f.lat, lng: f.lng } : undefined);
   const page = f.page ?? 1;
-  const sort = f.sort === 'distance' && !located ? 'newest' : (f.sort ?? 'newest');
+  const sort = f.sort === 'distance' && !origin ? 'newest' : (f.sort ?? 'newest');
   return {
-    p_lat: located ? f.lat : undefined,
-    p_lng: located ? f.lng : undefined,
+    p_lat: origin?.lat,
+    p_lng: origin?.lng,
     p_radius_miles: f.radius ?? DEFAULT_SEARCH_RADIUS_MILES,
-    p_make_id: ids.makeId,
-    p_model_id: ids.modelId,
+    p_make_id: resolved.makeId,
+    p_model_id: resolved.modelId,
     p_year_min: f.yearMin,
     p_year_max: f.yearMax,
     p_price_min_cents: f.priceMin === undefined ? undefined : f.priceMin * 100,

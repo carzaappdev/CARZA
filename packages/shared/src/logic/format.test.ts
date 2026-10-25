@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDistance, formatMileage, formatPrice, vehicleTitle } from './format';
+import { formatDistance, formatMileage, formatPrice, listedAgo, vehicleTitle } from './format';
 
 describe('format', () => {
   it('formats prices in whole dollars', () => {
@@ -20,5 +20,16 @@ describe('format', () => {
     expect(vehicleTitle({ year: 2019, make: 'Toyota', model: 'Tacoma', trim: null })).toBe(
       '2019 Toyota Tacoma',
     );
+  });
+});
+
+describe('listedAgo', () => {
+  const now = new Date('2026-10-25T12:00:00Z');
+  it('describes how long a car has been listed', () => {
+    expect(listedAgo('2026-10-25T08:00:00Z', now)).toBe('Listed today');
+    expect(listedAgo('2026-10-24T08:00:00Z', now)).toBe('Listed yesterday');
+    expect(listedAgo('2026-10-20T12:00:00Z', now)).toBe('Listed 5 days ago');
+    expect(listedAgo('2026-10-04T12:00:00Z', now)).toBe('Listed 3 weeks ago');
+    expect(listedAgo('2026-06-25T12:00:00Z', now)).toBe('Listed 4 months ago');
   });
 });

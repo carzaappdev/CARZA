@@ -88,3 +88,15 @@ export const SORT_LABELS: Record<SearchSort, string> = {
   year_desc: 'Newest year',
   distance: 'Closest first',
 };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** "Listed today", "Listed 3 days ago", "Listed 2 weeks ago", "Listed 4 months ago". */
+export function listedAgo(publishedAt: string | Date, now: Date = new Date()) {
+  const days = Math.max(0, Math.floor((now.getTime() - new Date(publishedAt).getTime()) / DAY_MS));
+  if (days === 0) return 'Listed today';
+  if (days === 1) return 'Listed yesterday';
+  if (days < 14) return `Listed ${days} days ago`;
+  if (days < 60) return `Listed ${Math.floor(days / 7)} weeks ago`;
+  return `Listed ${Math.floor(days / 30)} months ago`;
+}

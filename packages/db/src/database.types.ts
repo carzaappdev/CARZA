@@ -505,6 +505,31 @@ export type Database = {
           },
         ];
       };
+      postal_codes: {
+        Row: {
+          city: string | null;
+          code: string;
+          lat: number;
+          lng: number;
+          region: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          city?: string | null;
+          code: string;
+          lat: number;
+          lng: number;
+          region?: string | null;
+        };
+        Update: {
+          city?: string | null;
+          code?: string;
+          lat?: number;
+          lng?: number;
+          region?: string | null;
+        };
+        Relationships: [];
+      };
       profile_private: {
         Row: {
           location: unknown;
@@ -904,6 +929,15 @@ export type Database = {
           p_role?: Database['public']['Enums']['dealer_role'];
         };
         Returns: string;
+      };
+      listing_insights: {
+        Args: { p_listing_ids: string[] };
+        Returns: {
+          comparable_count: number;
+          listing_id: string;
+          market_price_cents: number;
+          photo_count: number;
+        }[];
       };
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined };
       request_test_drive: {
