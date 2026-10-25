@@ -5,3 +5,4 @@ export * from './logic/safe-next-path';
 export * from './logic/geo';
 export * from './schemas/auth';
 export * from './logic/auth-errors';
+export * from './logic/roles';

@@ -3,10 +3,11 @@
 import { useState, type FormEvent } from 'react';
 import { authErrorMessage, fieldErrors, resetPasswordSchema } from '@carza/shared';
 import { createClient } from '@/lib/supabase/browser';
-import { Field, FormMessage, SubmitButton } from './fields';
+import { Field, FormMessage, SubmitButton, useFocusFirstInvalid } from './fields';
 
 export function ResetPasswordForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const formRef = useFocusFirstInvalid(errors);
   const [formError, setFormError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [pending, setPending] = useState(false);
@@ -19,9 +20,8 @@ export function ResetPasswordForm() {
     if (!parsed.success) return setErrors(fieldErrors(parsed.error));
     setErrors({});
     setPending(true);
-    const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${window.location.origin}/auth/confirm?next=/update-password`,
-    });
+    // The link comes from the email template (supabase/templates/recovery.html) → /update-password.
+    const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email);
     setPending(false);
     // Rate limits are worth surfacing; anything else gets the neutral message (no account enumeration).
     if (error?.code?.startsWith('over_')) return setFormError(authErrorMessage(error.code));
@@ -37,7 +37,7 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
       <Field
         label="Email"

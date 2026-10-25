@@ -1,13 +1,17 @@
-import type { InputHTMLAttributes } from 'react';
+import { useEffect, useRef, type InputHTMLAttributes } from 'react';
 
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   name: string;
   error?: string;
+  hint?: string;
 };
 
-export function Field({ label, name, error, ...input }: FieldProps) {
+export function Field({ label, name, error, hint, ...input }: FieldProps) {
   const errorId = `${name}-error`;
+  const hintId = `${name}-hint`;
+  const describedBy =
+    [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(' ') || undefined;
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={name} className="text-sm font-medium">
@@ -17,13 +21,18 @@ export function Field({ label, name, error, ...input }: FieldProps) {
         id={name}
         name={name}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? errorId : undefined}
-        className="border-input bg-background focus-visible:ring-ring h-11 rounded-md border px-3 text-base outline-none focus-visible:ring-2 aria-invalid:border-destructive"
+        aria-describedby={describedBy}
+        className="border-input bg-background focus-visible:ring-ring aria-invalid:border-destructive h-11 rounded-md border px-3 text-base outline-none focus-visible:ring-2"
         {...input}
       />
       {error ? (
         <p id={errorId} className="text-destructive text-sm">
           {error}
+        </p>
+      ) : null}
+      {hint ? (
+        <p id={hintId} className="text-muted-foreground text-xs">
+          {hint}
         </p>
       ) : null}
     </div>
@@ -55,4 +64,15 @@ export function SubmitButton({ pending, children }: { pending: boolean; children
       {pending ? 'Please wait…' : children}
     </button>
   );
+}
+
+/** Moves focus to the first invalid field after validation fails, so the error is announced. */
+export function useFocusFirstInvalid(errors: Record<string, string>) {
+  const formRef = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (Object.keys(errors).length) {
+      formRef.current?.querySelector<HTMLInputElement>('[aria-invalid="true"]')?.focus();
+    }
+  }, [errors]);
+  return formRef;
 }

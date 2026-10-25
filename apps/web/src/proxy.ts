@@ -6,8 +6,7 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except static assets and image optimization.
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml)$).*)',
-  ],
+  // Everything except Next's build assets. No extension-based exclusions: a future /dealer/*.csv or
+  // /account/*.txt route must still get the guard and session refresh.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

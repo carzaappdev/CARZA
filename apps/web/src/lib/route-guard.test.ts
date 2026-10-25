@@ -14,10 +14,13 @@ describe('routeRedirect', () => {
     expect(routeRedirect('/dealers/some-dealer', '', false)).toBeNull();
   });
 
-  it('lets signed-in users through and bounces them off sign-in to a safe next', () => {
+  it('lets signed-in users through', () => {
     expect(routeRedirect('/account', '', true)).toBeNull();
-    expect(routeRedirect('/sign-in', '?next=/dealer', true)).toBe('/dealer');
-    expect(routeRedirect('/sign-in', '?next=//evil.com', true)).toBe('/');
+  });
+
+  it('never redirects away from sign-in (that could loop with a revoked session)', () => {
+    expect(routeRedirect('/sign-in', '?next=/dealer', true)).toBeNull();
+    expect(routeRedirect('/sign-in', '', false)).toBeNull();
   });
 
   it('leaves public routes alone', () => {

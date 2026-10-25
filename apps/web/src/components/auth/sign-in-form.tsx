@@ -6,13 +6,23 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { authErrorMessage, fieldErrors, signInSchema } from '@carza/shared';
 import { createClient } from '@/lib/supabase/browser';
-import { Field, FormMessage, SubmitButton } from './fields';
+import { Field, FormMessage, SubmitButton, useFocusFirstInvalid } from './fields';
 
 export function SignInForm({ next, initialError }: { next: string; initialError: string | null }) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const formRef = useFocusFirstInvalid(errors);
   const [formError, setFormError] = useState<string | null>(initialError);
   const [pending, setPending] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
+
+  async function resendConfirmation() {
+    if (!unconfirmedEmail) return;
+    const { error } = await createClient().auth.resend({ type: 'signup', email: unconfirmedEmail });
+    if (error) return setFormError(authErrorMessage(error.code));
+    setResent(true);
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -25,6 +35,8 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
     const { error } = await createClient().auth.signInWithPassword(parsed.data);
     if (error) {
       setFormError(authErrorMessage(error.code));
+      setUnconfirmedEmail(error.code === 'email_not_confirmed' ? parsed.data.email : null);
+      setResent(false);
       setPending(false);
       return;
     }
@@ -34,8 +46,21 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
+      {unconfirmedEmail ? (
+        resent ? (
+          <FormMessage tone="success">We&apos;ve sent a new confirmation link.</FormMessage>
+        ) : (
+          <button
+            type="button"
+            onClick={resendConfirmation}
+            className="text-primary self-start text-sm font-medium"
+          >
+            Resend confirmation email
+          </button>
+        )
+      ) : null}
       <Field
         label="Email"
         name="email"

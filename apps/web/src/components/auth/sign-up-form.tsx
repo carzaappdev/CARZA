@@ -3,10 +3,11 @@
 import { useState, type FormEvent } from 'react';
 import { authErrorMessage, fieldErrors, signUpSchema } from '@carza/shared';
 import { createClient } from '@/lib/supabase/browser';
-import { Field, FormMessage, SubmitButton } from './fields';
+import { Field, FormMessage, SubmitButton, useFocusFirstInvalid } from './fields';
 
-export function SignUpForm({ next }: { next: string }) {
+export function SignUpForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const formRef = useFocusFirstInvalid(errors);
   const [formError, setFormError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -23,27 +24,27 @@ export function SignUpForm({ next }: { next: string }) {
     const { error } = await createClient().auth.signUp({
       email,
       password,
-      options: {
-        data: { display_name: displayName },
-        emailRedirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
-      },
+      // The confirmation link comes from the email template (supabase/templates/confirmation.html).
+      options: { data: { display_name: displayName } },
     });
     setPending(false);
-    if (error) return setFormError(authErrorMessage(error.code));
-    // Supabase returns success for existing emails too (no account enumeration), so the message is neutral.
+    // "Already registered" gets the same response as success, so this form can't be used to test which
+    // emails have accounts. (The API itself still leaks it; CAPTCHA on sign-up mitigates scripted probing.)
+    if (error && error.code !== 'user_already_exists')
+      return setFormError(authErrorMessage(error.code));
     setSentTo(email);
   }
 
   if (sentTo) {
     return (
       <FormMessage tone="success">
-        {`Check your inbox. If ${sentTo} can be used, we've sent a link to confirm your account.`}
+        {`Check your inbox at ${sentTo} for a link to finish setting up your account.`}
       </FormMessage>
     );
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
       <Field
         label="Your name"
@@ -67,10 +68,8 @@ export function SignUpForm({ next }: { next: string }) {
         autoComplete="new-password"
         required
         error={errors.password}
+        hint="At least 10 characters, with letters and numbers."
       />
-      <p className="text-muted-foreground -mt-2 text-xs">
-        At least 10 characters, with letters and numbers.
-      </p>
       <SubmitButton pending={pending}>Create account</SubmitButton>
     </form>
   );

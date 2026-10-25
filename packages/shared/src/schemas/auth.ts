@@ -5,7 +5,8 @@ import { z } from 'zod';
 export const passwordSchema = z
   .string()
   .min(10, 'Use at least 10 characters.')
-  .max(72, 'Use at most 72 characters.')
+  // bcrypt (Supabase Auth) only uses the first 72 BYTES; reject longer so no part is silently ignored.
+  .refine((v) => new TextEncoder().encode(v).length <= 72, 'That password is too long.')
   .regex(/[A-Za-z]/, 'Include at least one letter.')
   .regex(/[0-9]/, 'Include at least one number.');
 
@@ -44,11 +45,6 @@ export const emailOtpTypeSchema = z.enum([
   'invite',
   'magiclink',
 ]);
-
-export type SignInInput = z.infer<typeof signInSchema>;
-export type SignUpInput = z.infer<typeof signUpSchema>;
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
-export type UpdatePasswordInput = z.infer<typeof updatePasswordSchema>;
 
 /** First error message per field, for showing next to inputs. */
 export function fieldErrors(error: z.ZodError): Record<string, string> {
