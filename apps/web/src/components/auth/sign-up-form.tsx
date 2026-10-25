@@ -24,11 +24,8 @@ export function SignUpForm() {
     const { error } = await createClient().auth.signUp({
       email,
       password,
-      options: {
-        data: { display_name: displayName },
-        // Works with Supabase's default email template: the link returns here with a PKCE code.
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/account`,
-      },
+      // The confirmation link comes from the email template (supabase/templates/confirmation.html).
+      options: { data: { display_name: displayName } },
     });
     setPending(false);
     // "Already registered" gets the same response as success, so this form can't be used to test which
