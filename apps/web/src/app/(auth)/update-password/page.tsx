@@ -12,7 +12,7 @@ export default async function UpdatePasswordPage() {
   if (!(await hasRecentRecoverySession())) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="text-xl font-semibold">Change your password</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight">Change your password</h1>
         <p className="text-muted-foreground text-sm">
           For your security, we need to confirm it&apos;s you. We&apos;ll email you a link to set a
           new password.
@@ -25,7 +25,7 @@ export default async function UpdatePasswordPage() {
   }
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-xl font-semibold">Choose a new password</h1>
+      <h1 className="font-display text-2xl font-bold tracking-tight">Choose a new password</h1>
       <UpdatePasswordForm />
     </div>
   );

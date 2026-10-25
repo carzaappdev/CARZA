@@ -14,7 +14,10 @@ export default async function SignInPage({ searchParams }: { searchParams: AuthS
   if (await getUser()) redirect(next as Route);
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-xl font-semibold">Sign in</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="font-display text-2xl font-bold tracking-tight">Welcome back</h1>
+        <p className="text-muted-foreground text-sm">Sign in to your Carza account.</p>
+      </div>
       <OAuthButtons next={next} />
       <SignInForm next={next} initialError={error} />
       <p className="text-muted-foreground text-sm">
