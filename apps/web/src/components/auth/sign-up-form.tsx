@@ -27,7 +27,7 @@ export function SignUpForm() {
       options: {
         data: { display_name: displayName },
         // Works with Supabase's default email template: the link returns here with a PKCE code.
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/account`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?flow=email&next=/account`,
       },
     });
     setPending(false);

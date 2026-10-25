@@ -17,6 +17,8 @@ const MESSAGES = new Map<string, string>(
     session_not_found: 'Your session expired. Please sign in again.',
     oauth_failed: 'We couldn’t sign you in with that provider. Please try again.',
     link_invalid: 'That link is invalid or has expired. Request a new one.',
+    link_other_browser:
+      'That link was opened in a different browser. If you were confirming your email, it’s confirmed: sign in below. To reset a password, request a new link and open it here.',
   }),
 );
 

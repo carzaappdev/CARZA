@@ -23,7 +23,7 @@ export function ResetPasswordForm() {
     setPending(true);
     // The link returns via /auth/callback (PKCE) and lands on /update-password.
     const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email, {
-      redirectTo: `${window.location.origin}/auth/callback?next=/update-password`,
+      redirectTo: `${window.location.origin}/auth/callback?flow=email&next=/update-password`,
     });
     setPending(false);
     // Rate limits are worth surfacing; anything else gets the neutral message (no account enumeration).
