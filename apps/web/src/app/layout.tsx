@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { ThemeProvider } from '@/components/theme/theme-provider';
+import { ThemeProvider } from 'next-themes';
 import { Toaster } from '@/components/ui/sonner';
 import { clientEnv } from '@/env/client';
 import { inter, sora } from './fonts';

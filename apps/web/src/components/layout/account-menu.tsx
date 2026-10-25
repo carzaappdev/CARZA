@@ -41,7 +41,9 @@ export function AccountMenu({ viewer }: { viewer: Viewer }) {
       <DropdownMenuContent align="end" className="w-60">
         <DropdownMenuLabel>
           <span className="block truncate font-semibold">{viewer.displayName}</span>
-          <span className="text-muted-foreground block truncate text-xs">@{viewer.username}</span>
+          {viewer.username ? (
+            <span className="text-muted-foreground block truncate text-xs">@{viewer.username}</span>
+          ) : null}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

@@ -13,9 +13,13 @@ export const getViewer = cache(async () => {
     .select('display_name, username')
     .eq('id', user.id)
     .maybeSingle();
-  // The profile row is created by a trigger on sign-up, so a missing row is a bug, not a state.
-  if (!profile) throw new Error('Profile missing for signed-in user');
-  return { id: user.id, displayName: profile.display_name, username: profile.username };
+  // A sign-up trigger creates the profile, so a missing row is a bug. Log it, but keep the header (and so
+  // every page) rendering rather than failing the whole site for this user.
+  if (!profile) console.error('Profile missing for signed-in user', { userId: user.id });
+  return {
+    displayName: profile?.display_name ?? 'Your account',
+    username: profile?.username ?? null,
+  };
 });
 
 export type Viewer = NonNullable<Awaited<ReturnType<typeof getViewer>>>;
