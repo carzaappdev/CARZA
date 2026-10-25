@@ -4,10 +4,23 @@ import { useState } from 'react';
 import { authErrorMessage } from '@carza/shared';
 import { createClient } from '@/lib/supabase/browser';
 import { FormMessage } from './fields';
+import { AppleIcon, GoogleIcon } from './provider-icons';
 
+// Styling follows each provider's sign-in button guidelines:
+// Google: white button, gray outline, colored "G". Apple: black button, white Apple logo.
 const PROVIDERS = [
-  { id: 'google', label: 'Continue with Google' },
-  { id: 'apple', label: 'Continue with Apple' },
+  {
+    id: 'google',
+    label: 'Continue with Google',
+    Icon: GoogleIcon,
+    className: 'border border-[#747775] bg-white text-[#1F1F1F] hover:bg-[#F8F9FA]',
+  },
+  {
+    id: 'apple',
+    label: 'Continue with Apple',
+    Icon: AppleIcon,
+    className: 'bg-black text-white hover:bg-black/85',
+  },
 ] as const;
 
 export function OAuthButtons({ next }: { next: string }) {
@@ -39,9 +52,10 @@ export function OAuthButtons({ next }: { next: string }) {
             type="button"
             disabled={pending !== null}
             onClick={() => signIn(p.id)}
-            className="border-input hover:bg-accent h-11 rounded-md border font-medium disabled:opacity-60"
+            className={`focus-visible:ring-ring flex h-11 items-center justify-center gap-3 rounded-md px-4 font-medium outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-60 ${p.className}`}
           >
-            {pending === p.id ? 'Redirecting…' : p.label}
+            <p.Icon />
+            <span>{pending === p.id ? 'Redirecting…' : p.label}</span>
           </button>
         ))}
         {error ? <FormMessage tone="error">{error}</FormMessage> : null}
