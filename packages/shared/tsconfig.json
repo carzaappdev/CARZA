@@ -1,0 +1,5 @@
+{
+  // Runtime-neutral: no Node or DOM types, so code here also runs in the Expo app.
+  "extends": "@carza/config/tsconfig/library.json",
+  "include": ["src"]
+}

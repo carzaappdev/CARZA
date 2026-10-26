@@ -1,0 +1,22 @@
+{
+  "name": "@carza/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@carza/config": "workspace:*",
+    "eslint": "^10.13.0",
+    "typescript": "~6.0.3"
+  }
+}

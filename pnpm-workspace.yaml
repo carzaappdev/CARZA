@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Packages allowed to run install scripts. Keep this list explicit and short.
+onlyBuiltDependencies:
+  - sharp
+ignoredBuiltDependencies:
+  - unrs-resolver
