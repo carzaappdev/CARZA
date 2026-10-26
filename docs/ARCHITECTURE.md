@@ -591,7 +591,7 @@ job e2e:     (stage 6) supabase start → build → playwright
 - Center = `{{METRO}}` lat/lng defined once at the top. Everything is generated within ~40 miles with a fixed random seed (`setseed`), so it's reproducible.
 - **10 users** (`auth.users` + `auth.identities`, password `password1234` for all, documented as local-only), including 1 admin (you) and 6 dealer staff.
 - **3 dealerships:** a franchise Toyota/Honda store (verified), an independent used-car lot (verified), and a luxury/EV specialist (**pending**, so the pending-state UI is visible). Each has owner/admin/staff members.
-- **~60 listings:** ~45 dealer (mix of new/used/certified) and ~15 private, with real makes/models, sensible year/mileage/price relationships, and statuses spread across active/pending/sold/draft.
+- **~210 listings:** ~180 dealer (mix of new/used/certified) and ~30 private, with real makes/models, sensible year/mileage/price relationships, and statuses spread across active/pending/sold/draft.
 - **Conversations:** ~12 (consumer↔dealer and consumer↔consumer) with 3–8 messages each. **Test drives:** ~8 across all statuses, with times in dealership-local business hours. Plus a few saved listings, notifications, and 2 open reports.
 - **Photos:** none. Storage paths must start with the listing's id (a security rule we don't loosen for seed data), and the UI has a proper no-photo placeholder. Upload a few by hand locally if you want to see photo layouts.
 

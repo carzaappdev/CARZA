@@ -127,7 +127,7 @@ select pg_temp.sid(d), pg_temp.sid(d || '-' || r), r::public.dealer_role
 from unnest(array['lakeside', 'metro', 'volt']) as d, unnest(array['owner', 'staff']) as r;
 
 -- -----------------------------------------------------------------------------
--- Vehicles + listings (~45 dealer, ~15 private)
+-- Vehicles + listings (~180 dealer, ~30 private)
 -- -----------------------------------------------------------------------------
 create temporary table seed_catalog (
   make text, model text, body public.body_style, fuel public.fuel_type, drive public.drivetrain,
@@ -196,10 +196,11 @@ declare
   v_r double precision;
   v_this_year integer := extract(year from now())::integer;
 begin
-  -- 20 Lakeside, 17 Metro, 8 Volt (pending → drafts), 15 private (5 per buyer).
-  v_plan := v_plan || array_fill('lakeside'::text, array[20]) || array_fill('metro'::text, array[17])
+  -- 90 Lakeside, 80 Metro, 8 Volt (pending → drafts), 30 private (10 per buyer). Enough cars per model that
+  -- price estimates (listing_insights needs 5+ comparables) show up in dev.
+  v_plan := v_plan || array_fill('lakeside'::text, array[90]) || array_fill('metro'::text, array[80])
     || array_fill('volt'::text, array[8])
-    || array_fill('buyer1'::text, array[5]) || array_fill('buyer2'::text, array[5]) || array_fill('buyer3'::text, array[5]);
+    || array_fill('buyer1'::text, array[10]) || array_fill('buyer2'::text, array[10]) || array_fill('buyer3'::text, array[10]);
 
   foreach v_seller in array v_plan loop
     v_n := v_n + 1;

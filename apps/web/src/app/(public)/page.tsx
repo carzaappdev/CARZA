@@ -1,8 +1,16 @@
+import type { Route } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { CarFrontIcon } from 'lucide-react';
 import { CarzaMark } from '@/components/brand/logo';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { Button } from '@/components/ui/button';
+import { getListingInsights, getPostalCode, getSavedListingIds, searchListings } from '@carza/db';
+import { BODY_STYLE_LABELS, DEFAULT_SEARCH_RADIUS_MILES } from '@carza/shared';
+import { ListingCard } from '@/components/listings/listing-card';
+import { getUser } from '@/lib/auth';
+import { ZIP_COOKIE, validZip } from '@/lib/search';
+import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/viewer';
 
 export default async function HomePage() {
@@ -59,19 +67,102 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-12 sm:px-6">
-        <h2 className="font-display text-2xl font-bold tracking-tight">Recently listed near you</h2>
+      <RecentListings />
+
+      <section
+        aria-labelledby="browse-heading"
+        className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 pb-16 sm:px-6"
+      >
+        <h2 id="browse-heading" className="font-display text-2xl font-bold tracking-tight">
+          Browse by type
+        </h2>
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+          {BROWSE_BODY_STYLES.map((body) => (
+            <li key={body}>
+              <Link
+                href={`/search?body=${body}` as Route}
+                className="bg-card hover:bg-accent focus-visible:ring-ring/50 flex min-h-14 items-center justify-center rounded-xl border px-3 text-sm font-semibold outline-none focus-visible:ring-[3px]"
+              >
+                {BODY_STYLE_LABELS[body]}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </>
+  );
+}
+
+const BROWSE_BODY_STYLES = [
+  'suv',
+  'pickup',
+  'sedan',
+  'crossover',
+  'hatchback',
+  'coupe',
+  'minivan',
+  'convertible',
+] as const;
+
+/** The newest cars, near the buyer's last searched ZIP code when we know it. */
+async function RecentListings() {
+  const supabase = await createClient();
+  const zip = validZip((await cookies()).get(ZIP_COOKIE)?.value);
+  const [user, postal] = await Promise.all([getUser(), zip ? getPostalCode(supabase, zip) : null]);
+  const { rows } = await searchListings(supabase, {
+    p_lat: postal?.lat,
+    p_lng: postal?.lng,
+    p_radius_miles: DEFAULT_SEARCH_RADIUS_MILES,
+    p_limit: 8,
+  });
+  const ids = rows.map((r) => r.listing_id);
+  const [insights, saved] = await Promise.all([
+    getListingInsights(supabase, ids),
+    user ? getSavedListingIds(supabase, ids) : Promise.resolve(new Set<string>()),
+  ]);
+  const near = postal ? (postal.city ? `${postal.city}, ${postal.region}` : postal.code) : null;
+  const seeAll = (postal ? `/search?zip=${postal.code}` : '/search') as Route;
+
+  return (
+    <section
+      aria-labelledby="recent-heading"
+      className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-12 sm:px-6"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <h2 id="recent-heading" className="font-display text-2xl font-bold tracking-tight">
+          {near ? `Just listed near ${near}` : 'Just listed'}
+        </h2>
+        {rows.length > 0 && (
+          <Link href={seeAll} className="text-sm font-medium underline-offset-4 hover:underline">
+            See all cars
+          </Link>
+        )}
+      </div>
+      {rows.length > 0 ? (
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {rows.map((listing) => (
+            <li key={listing.listing_id} className="flex">
+              <ListingCard
+                listing={listing}
+                insight={insights.get(listing.listing_id)}
+                saved={saved.has(listing.listing_id)}
+                signedIn={user !== null}
+              />
+            </li>
+          ))}
+        </ul>
+      ) : (
         <EmptyState
           Icon={CarFrontIcon}
-          title="Listings are coming"
-          body="Cars from dealers and private sellers near you will show up here."
+          title="No cars listed nearby yet"
+          body="New cars from dealers and private sellers show up here as soon as they’re listed."
           action={
             <Button asChild variant="outline">
-              <Link href="/account/listings/new">Sell your car</Link>
+              <Link href="/search">Search everywhere</Link>
             </Button>
           }
         />
-      </section>
-    </>
+      )}
+    </section>
   );
 }

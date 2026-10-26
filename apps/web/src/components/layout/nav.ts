@@ -14,8 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-// /search is built in the marketplace PR. Asserted so this shell type-checks before that lands.
-export const SEARCH_HREF = '/search' as Route;
+export const SEARCH_HREF: Route = '/search';
 
 export type NavItem = { href: Route; label: string; Icon: LucideIcon; exact?: boolean };
 
