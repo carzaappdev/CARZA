@@ -55,7 +55,7 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
           <button
             type="button"
             onClick={resendConfirmation}
-            className="text-primary self-start text-sm font-medium"
+            className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black self-start text-sm"
           >
             Resend confirmation email
           </button>
@@ -80,7 +80,7 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
       <SubmitButton pending={pending}>Sign in</SubmitButton>
       <Link
         href="/reset-password"
-        className="text-primary text-sm underline-offset-4 hover:underline"
+        className="text-muted-foreground hover:text-foreground self-start text-sm underline-offset-4 hover:underline"
       >
         Forgot your password?
       </Link>

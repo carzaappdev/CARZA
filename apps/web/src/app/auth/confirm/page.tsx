@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { CarzaLogo } from '@/components/brand/logo';
 import { getUser } from '@/lib/auth';
 import { confirmEmailLink } from '../actions';
 
@@ -22,7 +23,8 @@ export default async function ConfirmPage({ searchParams }: { searchParams: Para
   const current = await getUser();
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-4 py-10">
+    <main className="flex min-h-dvh flex-col items-center justify-center gap-8 px-4 py-10">
+      <CarzaLogo size="md" />
       <div className="bg-card flex w-full max-w-sm flex-col gap-4 rounded-xl border p-6 shadow-sm">
         <h1 className="text-xl font-semibold">{copy.title}</h1>
         {current ? (

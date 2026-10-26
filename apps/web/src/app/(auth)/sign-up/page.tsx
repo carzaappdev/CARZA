@@ -14,12 +14,18 @@ export default async function SignUpPage({ searchParams }: { searchParams: AuthS
   if (await getUser()) redirect(next as Route);
   return (
     <div className="flex flex-col gap-5">
-      <h1 className="text-xl font-semibold">Create your account</h1>
+      <div className="flex flex-col gap-1">
+        <h1 className="font-display text-2xl font-bold tracking-tight">Create your account</h1>
+        <p className="text-muted-foreground text-sm">Join Carza in under a minute.</p>
+      </div>
       <OAuthButtons next={next} />
       <SignUpForm />
       <p className="text-muted-foreground text-sm">
         Already have an account?{' '}
-        <Link href={{ pathname: '/sign-in', query: { next } }} className="text-primary font-medium">
+        <Link
+          href={{ pathname: '/sign-in', query: { next } }}
+          className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+        >
           Sign in
         </Link>
       </p>
