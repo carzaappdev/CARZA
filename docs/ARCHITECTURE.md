@@ -424,9 +424,11 @@ requireAdmin()                                       // profiles.role = 'admin'
 - [ ] **Redirect URLs** (dev project): `http://localhost:3000/**` plus **exact** preview URLs, never a `*.vercel.app` wildcard. Supabase's `*` matches `-`, and anyone can create a Vercel project whose domain matches `carza-*-carzaapp.vercel.app`, which would let them receive auth codes. Best option: give previews a domain you own (Vercel → Settings → Domains, e.g. `*.preview.<yourdomain>`) and allow `https://*.preview.<yourdomain>/**`. Prod: `https://<prod-domain>/**` only.
 - [ ] Auth → Providers → Email: **Confirm email ON**, secure password change ON, minimum password length 10.
 - [ ] Auth → **SMTP**: configure **Resend SMTP** (`smtp.resend.com`, port 465, user `resend`, password = Resend API key). _The built-in SMTP only delivers to your team's addresses and is heavily rate-limited, so sign-up will look broken without this._
-- [ ] Auth → Email Templates: paste `supabase/templates/confirm.html` and `recovery.html`. They link to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`, which the SSR flow requires.
+- [ ] Auth → Email Templates: paste `supabase/templates/confirmation.html` and `recovery.html`. They link to `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`, which the SSR flow requires.
 - [ ] Auth → Rate Limits: review defaults (email sends/hour, sign-ups per IP).
-- [ ] Auth → Attack Protection: optional CAPTCHA (Cloudflare Turnstile), see Open questions.
+- [ ] Auth → Attack Protection: **enable Cloudflare Turnstile CAPTCHA before launch** (sign-up, password recovery, resend). Without it, scripts can test which emails have accounts and use up the project's email quota. Needs a small widget on our forms (one dependency, to approve then).
+- [ ] Auth → Email: set the minimum interval between emails to **60 seconds** (matches `max_frequency` in config.toml).
+- [ ] Auth → Email Templates: also paste `email_change.html`, and enable the **password changed** notification (`password_changed_notification.html`).
 - [ ] Settings → API Keys: copy **publishable** and **secret** keys into Vercel env vars (below). Never into chat.
 - [ ] Apply migrations yourself: `supabase link --project-ref <dev-ref> && supabase db push`.
 
@@ -702,6 +704,16 @@ Rejected alternatives: Prisma/Drizzle (they'd duplicate RLS-aware access; supaba
 24. **Seed refuses to run** anywhere except an empty local stack (it checks for the local-only dev JWT secret), because it creates a known-password admin.
 25. **Accepted:** consumers can see which staff member's profile sent a dealer message (`messages.sender_id`). The UI labels dealer-side messages with the dealership name. Masking would need a view/RPC; revisit if dealers ask.
 26. **Open for stage 5:** where to store email throttling for dealer-side recipients (there's no per-member `last_emailed_at` yet).
+
+### Added in stage 3 (auth), after review
+
+27. **Email links never act on GET.** `/auth/confirm` is a page with a Continue button (a same-origin POST to a Server Action). This prevents login CSRF (an attacker mailing you _their_ link) and stops email scanners from burning one-time tokens. It warns before switching accounts.
+28. **Password changes need recent email proof.** `/update-password` works only within 10 minutes of using an email link (`amr` = otp/recovery). Settings will use `reauthenticate()` for in-app changes. Supabase emails a "password changed" notice.
+29. **The proxy only redirects TO sign-in, never away from it.** It checks the JWT locally, while pages ask the Auth server (`getUser`). Bouncing signed-in users off `/sign-in` in the proxy would loop for revoked sessions. Pages do that redirect server-side instead.
+30. **Sign-out is this device only** (`scope: 'local'`).
+31. **Sign-up shows the same response for new and existing emails.** The Supabase API itself still reveals it, so CAPTCHA on sign-up, recover and resend is on the checklist.
+32. **Static security headers ship now** (HSTS, X-Frame-Options, nosniff, Referrer-Policy, Permissions-Policy). The nonce CSP lands in stage 5, before any user-generated text is rendered.
+33. **Session cookies are `Secure` in production.** They're not HttpOnly, because the browser client needs the session for auth and Realtime. The CSP is the XSS mitigation.
 
 ### Top 5 risks
 

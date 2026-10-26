@@ -7,3 +7,7 @@ declare class URL {
   readonly search: string;
   readonly hash: string;
 }
+
+declare class TextEncoder {
+  encode(input?: string): Uint8Array;
+}
