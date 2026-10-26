@@ -24,11 +24,8 @@ describe('validateEnv', () => {
     );
   });
 
-  it('requires email settings on production deploys only', () => {
-    expect(() => validateEnv({ ...valid, VERCEL_ENV: 'preview' })).not.toThrow();
-    expect(() => validateEnv({ ...valid, VERCEL_ENV: 'production' })).toThrowError(
-      /RESEND_API_KEY[\s\S]*EMAIL_FROM/,
-    );
+  it('builds for production without email settings (nothing sends email yet)', () => {
+    expect(() => validateEnv({ ...valid, VERCEL_ENV: 'production' })).not.toThrow();
   });
 
   it('does not echo secret values in the error', () => {
