@@ -25,19 +25,26 @@ export function CarzaMark({
   );
 }
 
-/** Mark + "CARZA" wordmark, linking home. */
+/** Mark + "CARZA" wordmark, linking home. `auto` follows the light/dark theme. */
 export function CarzaLogo({
-  tone = 'light',
+  tone = 'auto',
   size = 'md',
 }: {
-  tone?: Tone;
+  tone?: Tone | 'auto';
   size?: 'sm' | 'md' | 'lg';
 }) {
   const mark = { sm: 'h-6 w-auto', md: 'h-8 w-auto', lg: 'h-14 w-auto' }[size];
   const word = { sm: 'text-lg', md: 'text-xl', lg: 'text-4xl' }[size];
   return (
     <Link href="/" aria-label="Carza home" className="inline-flex items-center gap-3">
-      <CarzaMark tone={tone} className={mark} />
+      {tone === 'auto' ? (
+        <>
+          <CarzaMark tone="light" className={`${mark} dark:hidden`} />
+          <CarzaMark tone="dark" className={`${mark} hidden dark:block`} />
+        </>
+      ) : (
+        <CarzaMark tone={tone} className={mark} />
+      )}
       <span
         className={`font-display font-extrabold tracking-[0.28em] ${word} ${tone === 'dark' ? 'text-white' : 'text-foreground'}`}
       >

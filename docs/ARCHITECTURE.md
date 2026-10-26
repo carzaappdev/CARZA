@@ -545,6 +545,7 @@ Set in `proxy.ts` (CSP needs a per-request nonce) and `next.config.ts` `headers(
 
 - `Content-Security-Policy`: `default-src 'self'; script-src 'self' 'nonce-{n}' 'strict-dynamic'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://<ref>.supabase.co; connect-src 'self' https://<ref>.supabase.co wss://<ref>.supabase.co; font-src 'self'; frame-ancestors 'none'; form-action 'self' https://accounts.google.com https://appleid.apple.com; base-uri 'self'; object-src 'none'; upgrade-insecure-requests`. Report-only in the first preview, enforced once clean.
 - `Strict-Transport-Security: max-age=63072000; includeSubDomains; preload`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=(self)`, `X-Frame-Options: DENY`.
+- next-themes injects an inline script to apply the theme before paint: pass the nonce to `<ThemeProvider nonce={…}>` in the root layout, or dark-mode users get a light flash and a CSP violation.
 - Trade-off: nonce CSP makes every page dynamically rendered. That's acceptable because pages are session-aware anyway (header state), and Supabase reads are fast. Revisit with Next's SRI/static CSP if listing pages need caching at scale.
 
 ### 4.10 Logging & monitoring (recommendation only, nothing installed)
