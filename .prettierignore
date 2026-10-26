@@ -1,5 +1,4 @@
 pnpm-lock.yaml
-packages/db/src/database.types.ts
 supabase/.temp
 .claude
 CLAUDE.md
