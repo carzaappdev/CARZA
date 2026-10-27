@@ -82,7 +82,7 @@ export function ReelUploader() {
       />
 
       {video ? (
-        <div className="relative mx-auto aspect-[9/16] w-full max-w-xs overflow-hidden rounded-2xl bg-black">
+        <div className="relative mx-auto aspect-[9/16] w-[min(100%,20rem,33.75dvh)] overflow-hidden rounded-2xl bg-black">
           <video
             src={video.previewUrl}
             className="size-full object-contain"
@@ -106,7 +106,7 @@ export function ReelUploader() {
           type="button"
           onClick={() => input.current?.click()}
           disabled={busy}
-          className="bg-muted/60 hover:bg-muted focus-visible:ring-ring/50 mx-auto flex aspect-[9/16] w-full max-w-xs flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 text-center outline-none focus-visible:ring-[3px]"
+          className="bg-muted/60 hover:bg-muted focus-visible:ring-ring/50 mx-auto flex aspect-[9/16] w-[min(100%,20rem,33.75dvh)] flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 text-center outline-none focus-visible:ring-[3px]"
         >
           {stage === 'reading' ? (
             <Loader2Icon

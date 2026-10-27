@@ -19,7 +19,7 @@ export default async function UpdatePasswordPage() {
         </p>
         <Link
           href="/reset-password"
-          className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+          className="text-foreground font-semibold underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground"
         >
           Send me a reset link
         </Link>

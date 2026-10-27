@@ -24,7 +24,7 @@ export default async function SignUpPage({ searchParams }: { searchParams: AuthS
         Already have an account?{' '}
         <Link
           href={{ pathname: '/sign-in', query: { next } }}
-          className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+          className="text-foreground font-semibold underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground"
         >
           Sign in
         </Link>

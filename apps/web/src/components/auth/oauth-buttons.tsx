@@ -7,20 +7,22 @@ import { FormMessage } from './fields';
 import { AppleIcon, GoogleIcon } from './provider-icons';
 
 // Styling follows each provider's sign-in button guidelines:
-// Google: white button, gray outline, colored "G". Apple: black button, white Apple logo.
+// Google: white button, gray outline, colored "G" (dark theme: #131314 fill, #8E918F outline).
+// Apple: black button, white logo (dark theme: white button, black logo).
 const PROVIDERS = [
   {
     id: 'google',
     label: 'Continue with Google',
     Icon: GoogleIcon,
     className:
-      'border border-[#dadce0] bg-white text-[#1F1F1F] hover:border-[#747775] hover:bg-[#F8F9FA]',
+      'border border-[#dadce0] bg-white text-[#1F1F1F] hover:border-[#747775] hover:bg-[#F8F9FA] dark:border-[#8E918F] dark:bg-[#131314] dark:text-[#E3E3E3] dark:hover:bg-[#1f1f21]',
   },
   {
     id: 'apple',
     label: 'Continue with Apple',
     Icon: AppleIcon,
-    className: 'bg-black text-white hover:bg-black/85',
+    className:
+      'bg-black text-white hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90',
   },
 ] as const;
 

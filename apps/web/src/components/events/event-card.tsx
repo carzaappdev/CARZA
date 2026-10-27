@@ -30,7 +30,7 @@ export function EventCard({ event }: { event: EventSummary }) {
       <div className="flex gap-3 p-4">
         <DateBadge startsAt={event.starts_at} timezone={event.timezone} />
         <div className="min-w-0 flex-1">
-          <h3 className="font-display truncate text-lg leading-6 font-bold group-hover:underline">
+          <h3 className="font-display line-clamp-2 text-lg leading-6 font-bold break-words group-hover:underline">
             {event.title}
           </h3>
           <p className="text-muted-foreground mt-0.5 text-sm">

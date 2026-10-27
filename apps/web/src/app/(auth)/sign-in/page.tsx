@@ -24,7 +24,7 @@ export default async function SignInPage({ searchParams }: { searchParams: AuthS
         New to Carza?{' '}
         <Link
           href={{ pathname: '/sign-up', query: { next } }}
-          className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black"
+          className="text-foreground font-semibold underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground"
         >
           Create an account
         </Link>

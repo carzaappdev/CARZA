@@ -2,9 +2,9 @@ import type { ReactNode } from 'react';
 import { CarzaLogo, CarzaMark } from '@/components/brand/logo';
 
 const POINTS = [
-  'Dealer and private-seller cars, side by side',
-  'Message sellers and book test drives in one place',
-  'Search by distance from you, not just make and model',
+  'Share your ride and follow local car people',
+  'Swipe through short videos of real cars',
+  'Find meets, cruises and shows near you',
 ];
 
 function Check() {
@@ -28,7 +28,7 @@ function Check() {
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="grid min-h-dvh grid-rows-[auto_1fr] lg:grid-cols-[1.05fr_1fr] lg:grid-rows-1">
+    <div className="grid min-h-dvh grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr] lg:grid-cols-[1.05fr_1fr] lg:grid-rows-1">
       {/* Brand panel: a showroom spotlight on desktop, a slim logo bar on mobile. */}
       <aside className="bg-brand-ink relative isolate overflow-hidden text-white">
         {/* Spotlight + floor glow */}
@@ -65,10 +65,10 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
             <div className="flex w-full max-w-md flex-col gap-7">
               <h2 className="font-display text-[2.6rem] leading-[1.08] font-bold tracking-tight">
-                Your next car is
+                Your local car scene,
                 <br />
                 <span className="bg-gradient-to-r from-white to-white/55 bg-clip-text text-transparent">
-                  closer than you think.
+                  all in one place.
                 </span>
               </h2>
               <ul className="flex flex-col gap-3.5 text-[15px] text-white/80">
@@ -83,13 +83,13 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           </div>
 
           <p className="hidden text-xs tracking-wide text-white/40 lg:block">
-            © {new Date().getFullYear()} Carza · Buy and sell cars, locally.
+            © {new Date().getFullYear()} Carza · Your local car community.
           </p>
         </div>
       </aside>
 
-      <main className="flex items-start justify-center bg-[#f7f7f5] px-4 py-10 sm:py-14 lg:items-center">
-        <div className="w-full max-w-[420px] rounded-2xl bg-white p-7 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-12px_rgba(0,0,0,0.12)] ring-1 ring-black/5 sm:p-9">
+      <main className="flex items-start justify-center bg-muted/50 dark:bg-background px-4 py-10 sm:py-14 lg:items-center">
+        <div className="w-full max-w-[420px] bg-card text-card-foreground ring-border rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-12px_rgba(0,0,0,0.12)] ring-1 sm:p-9 dark:shadow-none">
           {children}
         </div>
       </main>
