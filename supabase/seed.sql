@@ -471,4 +471,33 @@ select pg_temp.sid('post-' || x.n), pg_temp.sid(x.who)
 from (values (1, 'buyer2'), (1, 'buyer3'), (1, 'metro-owner'), (2, 'buyer1'), (3, 'buyer1'),
   (3, 'lakeside-owner'), (4, 'buyer3'), (5, 'buyer1'), (6, 'buyer3')) as x(n, who);
 
+-- -----------------------------------------------------------------------------
+-- Events + RSVPs (the host's own RSVP is added by trigger)
+-- -----------------------------------------------------------------------------
+insert into public.events (id, host_id, title, description, starts_at, ends_at, timezone, venue_name, address, postal_code, capacity)
+select pg_temp.sid('event-' || x.n), pg_temp.sid(x.host), x.title, x.description,
+  -- Day offsets from today, at local wall-clock hours in the metro's timezone.
+  (date_trunc('day', now() at time zone c.tz) + x.starts_in) at time zone c.tz,
+  (date_trunc('day', now() at time zone c.tz) + x.starts_in + x.duration) at time zone c.tz,
+  c.tz, x.venue, x.address, x.zip, x.capacity
+from seed_config c, (values
+  (1, 'buyer1', 'Cars & Coffee',
+   'Bring whatever you drive. Coffee''s on the shop, donuts are on Priya. Park nose-out, no burnouts.',
+   interval '3 days 8 hours', interval '3 hours', 'Fleet Street Coffee', '1200 S Lamar Blvd', '78704', null::integer),
+  (2, 'buyer3', 'Hill Country Cruise',
+   'A relaxed 90-mile loop through the hills with a lunch stop. We leave at 9 sharp, so fuel up first.',
+   interval '6 days 9 hours', interval '6 hours', 'Shell on Bee Cave Rd', '5700 Bee Cave Rd', '78746', 25),
+  (3, 'lakeside-owner', 'Detailing Night: Clay & Wax 101',
+   'Hands-on detailing basics in our service bay. Bring a microfiber or two; we supply the rest.',
+   interval '9 days 18 hours', interval '2 hours', 'Lakeside Toyota Honda', '4100 Lakeside Blvd', '78731', 15),
+  (4, 'buyer2', 'EV Meetup & Range Talk',
+   'Owners and the EV-curious. Bring questions about charging, road trips and home chargers.',
+   interval '13 days 18 hours', interval '2 hours', 'Downtown Library Plaza', null, '78701', null)
+) as x(n, host, title, description, starts_in, duration, venue, address, zip, capacity);
+
+insert into public.event_rsvps (event_id, user_id)
+select pg_temp.sid('event-' || x.n), pg_temp.sid(x.who)
+from (values (1, 'buyer2'), (1, 'buyer3'), (1, 'metro-owner'), (1, 'lakeside-staff'), (2, 'buyer1'),
+  (2, 'buyer2'), (3, 'buyer1'), (4, 'buyer1')) as x(n, who);
+
 commit;

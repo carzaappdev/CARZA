@@ -266,6 +266,115 @@ export type Database = {
           },
         ];
       };
+      event_rsvps: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_rsvps_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'event_rsvps_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      events: {
+        Row: {
+          address: string | null;
+          cancelled_at: string | null;
+          capacity: number | null;
+          city: string | null;
+          cover_path: string | null;
+          created_at: string;
+          description: string;
+          ends_at: string | null;
+          going_count: number;
+          host_id: string;
+          id: string;
+          location: unknown;
+          postal_code: string;
+          region: string | null;
+          starts_at: string;
+          timezone: string;
+          title: string;
+          updated_at: string;
+          venue_name: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          address?: string | null;
+          cancelled_at?: string | null;
+          capacity?: number | null;
+          city?: string | null;
+          cover_path?: string | null;
+          created_at?: string;
+          description?: string;
+          ends_at?: string | null;
+          going_count?: number;
+          host_id?: string;
+          id?: string;
+          location?: unknown;
+          postal_code: string;
+          region?: string | null;
+          starts_at: string;
+          timezone: string;
+          title: string;
+          updated_at?: string;
+          venue_name: string;
+        };
+        Update: {
+          address?: string | null;
+          cancelled_at?: string | null;
+          capacity?: number | null;
+          city?: string | null;
+          cover_path?: string | null;
+          created_at?: string;
+          description?: string;
+          ends_at?: string | null;
+          going_count?: number;
+          host_id?: string;
+          id?: string;
+          location?: unknown;
+          postal_code?: string;
+          region?: string | null;
+          starts_at?: string;
+          timezone?: string;
+          title?: string;
+          updated_at?: string;
+          venue_name?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'events_host_id_fkey';
+            columns: ['host_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       follows: {
         Row: {
           created_at: string;
@@ -1141,6 +1250,36 @@ export type Database = {
         Returns: undefined;
       };
       start_conversation: { Args: { p_body: string; p_listing_id: string }; Returns: string };
+      upcoming_events: {
+        Args: { p_lat?: number; p_limit?: number; p_lng?: number; p_radius_miles?: number };
+        Returns: {
+          address: string | null;
+          cancelled_at: string | null;
+          capacity: number | null;
+          city: string | null;
+          cover_path: string | null;
+          created_at: string;
+          description: string;
+          ends_at: string | null;
+          going_count: number;
+          host_id: string;
+          id: string;
+          location: unknown;
+          postal_code: string;
+          region: string | null;
+          starts_at: string;
+          timezone: string;
+          title: string;
+          updated_at: string;
+          venue_name: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'events';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
     };
     Enums: {
       app_role: 'user' | 'admin';

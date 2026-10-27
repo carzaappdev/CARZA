@@ -18,3 +18,4 @@ export type Enums<T extends keyof PublicSchema['Enums']> = PublicSchema['Enums']
 export * from './queries/search';
 export * from './queries/listings';
 export * from './queries/posts';
+export * from './queries/events';
