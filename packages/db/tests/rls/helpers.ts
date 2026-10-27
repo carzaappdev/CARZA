@@ -137,7 +137,7 @@ export async function cleanup() {
  */
 export async function uploadViaReservation(
   user: TestUser,
-  bucket: 'listing-photos' | 'avatars' | 'dealership-logos',
+  bucket: 'listing-photos' | 'avatars' | 'dealership-logos' | 'post-photos',
   targetId: string,
   file: Blob,
 ) {

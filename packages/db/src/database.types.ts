@@ -266,6 +266,40 @@ export type Database = {
           },
         ];
       };
+      follows: {
+        Row: {
+          created_at: string;
+          followee_id: string;
+          follower_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          followee_id: string;
+          follower_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          followee_id?: string;
+          follower_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'follows_followee_id_fkey';
+            columns: ['followee_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'follows_follower_id_fkey';
+            columns: ['follower_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       listing_photos: {
         Row: {
           created_at: string;
@@ -505,6 +539,40 @@ export type Database = {
           },
         ];
       };
+      post_likes: {
+        Row: {
+          created_at: string;
+          post_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          post_id: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          post_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'post_likes_post_id_fkey';
+            columns: ['post_id'];
+            isOneToOne: false;
+            referencedRelation: 'posts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'post_likes_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       postal_codes: {
         Row: {
           city: string | null;
@@ -529,6 +597,55 @@ export type Database = {
           region?: string | null;
         };
         Relationships: [];
+      };
+      posts: {
+        Row: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          id: string;
+          like_count: number;
+          photos: NonNullable<Json>;
+          reply_count: number;
+          reply_to_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          author_id?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          like_count?: number;
+          photos?: NonNullable<Json>;
+          reply_count?: number;
+          reply_to_id?: string | null;
+        };
+        Update: {
+          author_id?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          like_count?: number;
+          photos?: NonNullable<Json>;
+          reply_count?: number;
+          reply_to_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'posts_author_id_fkey';
+            columns: ['author_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'posts_reply_to_id_fkey';
+            columns: ['reply_to_id'];
+            isOneToOne: false;
+            referencedRelation: 'posts';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       profile_private: {
         Row: {
@@ -929,6 +1046,25 @@ export type Database = {
           p_role?: Database['public']['Enums']['dealer_role'];
         };
         Returns: string;
+      };
+      following_feed: {
+        Args: { p_before?: string; p_before_id?: string; p_limit?: number };
+        Returns: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          id: string;
+          like_count: number;
+          photos: NonNullable<Json>;
+          reply_count: number;
+          reply_to_id: string | null;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'posts';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
       };
       listing_insights: {
         Args: { p_listing_ids: string[] };

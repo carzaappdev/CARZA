@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react';
 import { SiteShell } from '@/components/layout/site-shell';
-import { AccountNav } from '@/components/layout/account-nav';
 import { requireUser } from '@/lib/auth';
 
 export default async function AccountLayout({ children }: { children: ReactNode }) {
@@ -8,11 +7,8 @@ export default async function AccountLayout({ children }: { children: ReactNode 
   await requireUser('/account');
   return (
     <SiteShell>
-      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 md:flex-row md:gap-10 md:py-10">
-        <aside className="md:w-56 md:shrink-0">
-          <AccountNav />
-        </aside>
-        <div className="flex min-w-0 flex-1 flex-col gap-6">{children}</div>
+      <div className="mx-auto flex w-full max-w-[640px] flex-1 flex-col gap-6 px-4 py-6 md:py-10">
+        {children}
       </div>
     </SiteShell>
   );

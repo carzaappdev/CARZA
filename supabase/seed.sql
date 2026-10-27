@@ -429,4 +429,46 @@ select pg_temp.sid('buyer2'), 'listing', pg_temp.sid('listing-' || s.n), 'mislea
 from seed_listings s where s.is_dealer and s.seller = 'metro' and s.status = 'active'
 order by s.n desc limit 1;
 
+-- -----------------------------------------------------------------------------
+-- Social feed: follows, posts, replies, likes (text only; no seeded images)
+-- -----------------------------------------------------------------------------
+update public.profiles p
+set bio = b.bio
+from (values
+  ('buyer1', 'Weekend canyon runs. Currently daily-driving a 2016 WRX.'),
+  ('buyer2', 'EV convert. Ask me about road trips in a Model 3.'),
+  ('buyer3', 'Truck guy. Overlanding, mods, and too many recovery boards.')
+) as b(label, bio)
+where p.id = pg_temp.sid(b.label);
+
+insert into public.follows (follower_id, followee_id)
+select pg_temp.sid(f), pg_temp.sid(t)
+from (values ('buyer1', 'buyer2'), ('buyer1', 'buyer3'), ('buyer2', 'buyer1'), ('buyer3', 'buyer1'),
+  ('lakeside-owner', 'buyer3'), ('metro-owner', 'buyer1')) as x(f, t);
+
+insert into public.posts (id, author_id, body, created_at)
+select pg_temp.sid('post-' || x.n), pg_temp.sid(x.author), x.body, now() - x.age
+from (values
+  (1, 'buyer1', 'Cars and coffee this Saturday at 8. Who''s in? Bringing the WRX, freshly detailed.', interval '25 minutes'),
+  (2, 'buyer2', 'Hit 1,000 miles on a single road trip without range anxiety once. The charging map is finally good enough.', interval '2 hours'),
+  (3, 'buyer3', 'Installed a 2" lift and 33s on the Tacoma this weekend. Took 6 hours and two trips to the parts store.', interval '5 hours'),
+  (4, 'buyer1', 'Unpopular opinion: manual transmissions make every commute more fun, even in traffic.', interval '1 day'),
+  (5, 'lakeside-owner', 'Detailing tip: clay bar before you wax. Your paint will thank you.', interval '2 days'),
+  (6, 'buyer2', 'What''s the best scenic drive within two hours of here? Looking for curves, not highways.', interval '3 days')
+) as x(n, author, body, age);
+
+insert into public.posts (author_id, reply_to_id, body, created_at)
+select pg_temp.sid(x.author), pg_temp.sid('post-' || x.parent), x.body, now() - x.age
+from (values
+  ('buyer3', 1, 'I''m in. Truck will be the one with mud on it.', interval '20 minutes'),
+  ('buyer2', 1, 'Count me in. Bringing donuts.', interval '15 minutes'),
+  ('buyer1', 3, 'Looks mean. Any rubbing at full lock?', interval '4 hours'),
+  ('buyer3', 6, 'The back roads out west through the hill country. Go early on a Sunday.', interval '2 days')
+) as x(author, parent, body, age);
+
+insert into public.post_likes (post_id, user_id)
+select pg_temp.sid('post-' || x.n), pg_temp.sid(x.who)
+from (values (1, 'buyer2'), (1, 'buyer3'), (1, 'metro-owner'), (2, 'buyer1'), (3, 'buyer1'),
+  (3, 'lakeside-owner'), (4, 'buyer3'), (5, 'buyer1'), (6, 'buyer3')) as x(n, who);
+
 commit;

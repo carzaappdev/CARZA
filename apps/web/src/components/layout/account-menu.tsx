@@ -1,9 +1,10 @@
 'use client';
 
+import type { Route } from 'next';
 import Link from 'next/link';
-import { LogOutIcon, StoreIcon } from 'lucide-react';
+import { LogOutIcon, SettingsIcon, UserIcon } from 'lucide-react';
 import { signOut } from '@/app/auth/actions';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/feed/user-avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,27 +16,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Viewer } from '@/lib/viewer';
-import { ACCOUNT_NAV } from './nav';
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join('') || '?'
-  );
-}
 
 export function AccountMenu({ viewer }: { viewer: Viewer }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Account menu" data-testid="account-link">
-          <Avatar className="size-9">
-            <AvatarFallback>{initials(viewer.displayName)}</AvatarFallback>
-          </Avatar>
+          <UserAvatar name={viewer.displayName} path={viewer.avatarPath} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
@@ -47,20 +34,19 @@ export function AccountMenu({ viewer }: { viewer: Viewer }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          {ACCOUNT_NAV.map(({ href, label, Icon }) => (
-            <DropdownMenuItem key={href} asChild>
-              <Link href={href}>
-                <Icon /> {label}
+          {viewer.username ? (
+            <DropdownMenuItem asChild>
+              <Link href={`/u/${viewer.username}` as Route}>
+                <UserIcon /> Your profile
               </Link>
             </DropdownMenuItem>
-          ))}
+          ) : null}
+          <DropdownMenuItem asChild>
+            <Link href="/account/settings">
+              <SettingsIcon /> Edit profile
+            </Link>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/dealer">
-            <StoreIcon /> Dealer dashboard
-          </Link>
-        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <form action={signOut}>
           <DropdownMenuItem asChild>

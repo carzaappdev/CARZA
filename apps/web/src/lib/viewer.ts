@@ -10,13 +10,15 @@ export const getViewer = cache(async () => {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, username')
+    .select('display_name, username, avatar_path')
     .eq('id', user.id)
     .maybeSingle();
   // A sign-up trigger creates the profile, so a missing row is a bug. Log it, but keep the header (and so
   // every page) rendering rather than failing the whole site for this user.
   if (!profile) console.error('Profile missing for signed-in user', { userId: user.id });
   return {
+    id: user.id,
+    avatarPath: profile?.avatar_path ?? null,
     displayName: profile?.display_name ?? 'Your account',
     username: profile?.username ?? null,
   };

@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
-import { Footer } from './footer';
 import { Header } from './header';
 import { MobileTabBar } from './mobile-tab-bar';
 
-/** Consumer-facing shell: sticky header, page, footer, and bottom tabs on phones. */
+/** App shell: sticky header (tabs on desktop), the page, and bottom tabs on phones. */
 export function SiteShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-dvh flex-col pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0">
@@ -17,7 +16,6 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <main id="main" className="flex flex-1 flex-col">
         {children}
       </main>
-      <Footer />
       <MobileTabBar />
     </div>
   );

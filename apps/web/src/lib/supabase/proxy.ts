@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from '@carza/db';
 import { clientEnv } from '@/env/client';
 import { SESSION_COOKIE_OPTIONS } from './cookie-options';
-import { routeRedirect } from '@/lib/route-guard';
+import { hiddenForLaunch, routeRedirect } from '@/lib/route-guard';
 
 /**
  * Refreshes the auth session cookie on every request and applies the signed-in route guard.
@@ -38,13 +38,20 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims?.sub);
 
-  const target = routeRedirect(request.nextUrl.pathname, request.nextUrl.search, signedIn);
-  if (target) {
-    const redirect = NextResponse.redirect(new URL(target, request.url));
-    // Keep any refreshed session cookies (and their cache headers) on the redirect.
-    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
-    Object.entries(sessionHeaders).forEach(([key, value]) => redirect.headers.set(key, value));
-    return redirect;
+  // Switched-off areas render the normal 404 page. `_`-prefixed paths are never routable in the App Router.
+  const { pathname, search } = request.nextUrl;
+  const hidden = hiddenForLaunch(pathname);
+  const target = hidden ? null : routeRedirect(pathname, search, signedIn);
+  const early = hidden
+    ? NextResponse.rewrite(new URL('/_hidden', request.url), { request })
+    : target
+      ? NextResponse.redirect(new URL(target, request.url))
+      : null;
+  if (early) {
+    // Keep any refreshed session cookies (and their cache headers).
+    response.cookies.getAll().forEach((cookie) => early.cookies.set(cookie));
+    Object.entries(sessionHeaders).forEach(([key, value]) => early.headers.set(key, value));
+    return early;
   }
   return response;
 }
