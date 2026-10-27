@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { CarzaLogo } from '@/components/brand/logo';
+import { Button } from '@/components/ui/button';
 
 export default function NotFound() {
   return (
@@ -9,9 +10,9 @@ export default function NotFound() {
       <p className="text-muted-foreground">
         That page doesn&apos;t exist or is no longer available.
       </p>
-      <Link href="/" className="text-primary font-medium underline-offset-4 hover:underline">
-        Go home
-      </Link>
+      <Button asChild className="mt-2 rounded-full">
+        <Link href="/">Go home</Link>
+      </Button>
     </main>
   );
 }

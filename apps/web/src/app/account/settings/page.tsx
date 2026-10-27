@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { PageHeader } from '@/components/layout/page-header';
 import { ProfileForm } from '@/components/feed/profile-form';
+import { ThemePicker } from '@/components/theme/theme-toggle';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -25,6 +26,9 @@ export default async function SettingsPage() {
           avatarPath: profile?.avatar_path ?? null,
         }}
       />
+      <section aria-label="Display" className="border-t pt-6">
+        <ThemePicker />
+      </section>
     </>
   );
 }

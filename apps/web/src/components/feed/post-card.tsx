@@ -58,20 +58,23 @@ export function PostCard({
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 text-[15px] leading-5">
+          <div className="flex min-w-0 flex-1 items-baseline gap-x-1.5 text-[15px] leading-5">
             <Link
               href={profileHref}
-              className="relative z-10 truncate font-semibold hover:underline"
+              className="relative z-10 min-w-0 truncate font-semibold hover:underline"
             >
               {post.author.display_name}
             </Link>
-            <span className="text-muted-foreground truncate">@{post.author.username}</span>
-            <span className="text-muted-foreground" aria-hidden>
+            {/* On narrow screens the handle gives way first, then the name; the time always shows. */}
+            <span className="text-muted-foreground min-w-0 shrink-[3] truncate">
+              @{post.author.username}
+            </span>
+            <span className="text-muted-foreground shrink-0" aria-hidden>
               ·
             </span>
             <time
               dateTime={post.createdAt}
-              className="text-muted-foreground"
+              className="text-muted-foreground shrink-0"
               suppressHydrationWarning
             >
               {formatRelativeTime(post.createdAt)}

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from 'next-themes';
+import { ThemeColor, THEME_COLORS } from '@/components/theme/theme-color';
 import { Toaster } from '@/components/ui/sonner';
 import { clientEnv } from '@/env/client';
 import { inter, sora } from './fonts';
@@ -17,8 +18,8 @@ export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#0a0a0c' },
+    { media: '(prefers-color-scheme: light)', color: THEME_COLORS.light },
+    { media: '(prefers-color-scheme: dark)', color: THEME_COLORS.dark },
   ],
 };
 
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           enableSystem
           disableTransitionOnChange
         >
+          <ThemeColor />
           {children}
           <Toaster />
         </ThemeProvider>

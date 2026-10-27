@@ -55,7 +55,7 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
           <button
             type="button"
             onClick={resendConfirmation}
-            className="text-foreground font-semibold underline decoration-black/20 underline-offset-4 hover:decoration-black self-start text-sm"
+            className="text-foreground font-semibold underline decoration-foreground/25 underline-offset-4 hover:decoration-foreground self-start text-sm"
           >
             Resend confirmation email
           </button>

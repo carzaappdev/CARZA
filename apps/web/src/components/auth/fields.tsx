@@ -22,7 +22,7 @@ export function Field({ label, name, error, hint, ...input }: FieldProps) {
         name={name}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
-        className="border-input placeholder:text-muted-foreground/70 aria-invalid:border-destructive aria-invalid:ring-destructive/15 h-12 rounded-xl border bg-white px-4 text-base transition outline-none hover:border-black/25 focus-visible:border-black focus-visible:ring-4 focus-visible:ring-black/8"
+        className="border-input placeholder:text-muted-foreground/70 aria-invalid:border-destructive aria-invalid:ring-destructive/15 h-12 rounded-xl border bg-background px-4 text-base transition outline-none hover:border-foreground/25 focus-visible:border-foreground focus-visible:ring-4 focus-visible:ring-foreground/10"
         {...input}
       />
       {error ? (
@@ -59,7 +59,7 @@ export function SubmitButton({ pending, children }: { pending: boolean; children
     <button
       type="submit"
       disabled={pending}
-      className="bg-primary text-primary-foreground h-12 rounded-xl font-semibold shadow-sm transition hover:bg-black/85 active:scale-[0.99] disabled:opacity-60"
+      className="bg-primary text-primary-foreground h-12 rounded-xl font-semibold shadow-sm transition hover:bg-primary/90 active:scale-[0.99] disabled:opacity-60"
     >
       {pending ? 'Please wait…' : children}
     </button>
