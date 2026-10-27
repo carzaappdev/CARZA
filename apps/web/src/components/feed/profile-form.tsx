@@ -9,7 +9,7 @@ import { LIMITS } from '@carza/shared';
 import { Button } from '@/components/ui/button';
 import { updateProfile } from '@/lib/actions/profile';
 import { prepareImage } from '@/lib/images';
-import { uploadImage } from '@/lib/upload-image';
+import { uploadImage } from '@/lib/upload';
 import { UserAvatar } from './user-avatar';
 
 type Fields = { displayName: string; username: string; bio: string; avatarPath: string | null };

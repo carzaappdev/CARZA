@@ -8,7 +8,7 @@ import { LIMITS, type PostPhoto } from '@carza/shared';
 import { Button } from '@/components/ui/button';
 import { createPost } from '@/lib/actions/posts';
 import { prepareImage } from '@/lib/images';
-import { uploadImage } from '@/lib/upload-image';
+import { uploadImage } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 import { UserAvatar } from './user-avatar';
 

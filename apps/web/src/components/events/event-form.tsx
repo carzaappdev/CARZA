@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { createEvent, updateEvent } from '@/lib/actions/events';
 import { prepareImage } from '@/lib/images';
 import { publicStorageUrl } from '@/lib/storage';
-import { uploadImage } from '@/lib/upload-image';
+import { uploadImage } from '@/lib/upload';
 import { cn } from '@/lib/utils';
 
 export type EventFormValues = {

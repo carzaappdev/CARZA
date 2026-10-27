@@ -9,6 +9,12 @@ export const LIMITS = {
   postMaxLength: 500,
   postPhotosMax: 4,
   feedPageSize: 20,
+  // Reels are stored as uploaded (free tier, no transcoding). 50 MB is Supabase's free-plan file cap.
+  reelMaxBytes: 50 * 1024 * 1024,
+  reelMaxSeconds: 60,
+  reelCaptionMaxLength: 300,
+  reelPageSize: 8,
+  videoMimeTypes: ['video/mp4', 'video/quicktime', 'video/webm'],
   listingDescriptionMaxLength: 5000,
   searchRadiusMilesMax: 500,
   searchPageSizeMax: 48,

@@ -1,6 +1,6 @@
 import { clientEnv } from '@/env/client';
 
-export type PublicBucket = 'listing-photos' | 'avatars' | 'post-photos';
+export type PublicBucket = 'listing-photos' | 'avatars' | 'post-photos' | 'reels';
 
 /** Public URL for an object in one of the public buckets. */
 export const publicStorageUrl = (bucket: PublicBucket, path: string) =>

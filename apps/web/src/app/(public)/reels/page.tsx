@@ -1,15 +1,26 @@
-import type { Metadata } from 'next';
-import { ClapperboardIcon } from 'lucide-react';
-import { ComingSoon } from '@/components/feedback/coming-soon';
+import type { Metadata, Route } from 'next';
+import { getReels } from '@carza/db';
+import { ReelsFeed } from '@/components/reels/reels-feed';
+import { getUser } from '@/lib/auth';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Reels' };
 
-export default function ReelsPage() {
+export default async function ReelsPage() {
+  const user = await getUser();
+  const initial = await getReels(
+    await createClient(),
+    { before: null, beforeId: null },
+    user?.id ?? null,
+  );
   return (
-    <ComingSoon
-      Icon={ClapperboardIcon}
-      title="Reels"
-      body="Short, full-screen videos of cars near you. Swipe through launches, walkarounds and builds."
+    <ReelsFeed
+      key={initial.reels[0]?.id ?? 'empty'}
+      initial={initial}
+      viewerId={user?.id ?? null}
+      createHref={
+        (user ? '/reels/new' : `/sign-in?next=${encodeURIComponent('/reels/new')}`) as Route
+      }
     />
   );
 }

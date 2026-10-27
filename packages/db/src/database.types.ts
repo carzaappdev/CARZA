@@ -826,6 +826,88 @@ export type Database = {
         };
         Relationships: [];
       };
+      reel_likes: {
+        Row: {
+          created_at: string;
+          reel_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          reel_id: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          reel_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reel_likes_reel_id_fkey';
+            columns: ['reel_id'];
+            isOneToOne: false;
+            referencedRelation: 'reels';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reel_likes_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      reels: {
+        Row: {
+          author_id: string;
+          caption: string;
+          created_at: string;
+          duration_seconds: number;
+          height: number;
+          id: string;
+          like_count: number;
+          poster_path: string;
+          video_path: string;
+          width: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          author_id?: string;
+          caption?: string;
+          created_at?: string;
+          duration_seconds: number;
+          height: number;
+          id?: string;
+          like_count?: number;
+          poster_path: string;
+          video_path: string;
+          width: number;
+        };
+        Update: {
+          author_id?: string;
+          caption?: string;
+          created_at?: string;
+          duration_seconds?: number;
+          height?: number;
+          id?: string;
+          like_count?: number;
+          poster_path?: string;
+          video_path?: string;
+          width?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reels_author_id_fkey';
+            columns: ['author_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       reports: {
         Row: {
           created_at: string;
