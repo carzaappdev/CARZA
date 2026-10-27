@@ -1,31 +1,26 @@
 # Carza — Project Rules for Claude Code
 
-You are working on **Carza**, a local-first car marketplace + community app.
+You are working on **Carza**, a local-first car community app (social feed, reels, events).
 Mahdy is the lead developer. Treat this file as law. If a request conflicts with it, say so before acting.
 
 ## Product (what we're building)
-Two sides: **Consumers** and **Dealers**.
+**Launch app (decided 2026-10-27): exactly three tabs. Build ONLY this until told otherwise:**
+- **Feed** — Threads-style social feed: text + photo posts, likes, replies, follows, profiles.
+- **Reels** — short vertical car videos you swipe through.
+- **Events** — anyone can host a car event (meet, cruise, show); others RSVP.
+- Auth (email/password, Apple, Google) and profiles carry over.
 
-**Phase 1 — MVP (build ONLY this until told otherwise):**
-- Auth: email/password, Sign in with Apple, Sign in with Google
-- Profiles: consumer profiles + dealer profiles (separate role)
-- Marketplace: private-party listings + dealer listings, search, filters, listing detail
-- Dealer pages: public page showing a dealer's inventory
-- Messaging: consumer↔dealer and consumer↔consumer (Supabase Realtime)
-- Test drive scheduling for local dealer inventory
-- Dealer dashboard (`/dealer`): inventory CRUD + CSV import, leads, test drive requests
-- Notifications: in-app + email (Resend). Push comes with mobile.
+**Parked (built, but switched off for launch):** marketplace (listings, search, selling), dealer pages and
+dealer dashboard, messaging, test drives. The code stays; `HIDDEN_FOR_LAUNCH` in
+`apps/web/src/lib/route-guard.ts` makes those routes 404. Don't extend parked features unless asked.
 
-**Phase 2:** MyGarage, Spotlights (paid), dealer inventory feed integrations.
-**Phase 3:** Social feed, Watch (short video), clubs/events/cruises.
+Do NOT build other features or "prepare" for them with speculative code. Keep schemas extensible, nothing more.
 
-Do NOT build Phase 2/3 features or "prepare" for them with speculative code. Keep schemas extensible, nothing more.
-
-Launch strategy: **one metro first.** Location/radius search is a core feature, not an afterthought.
+Launch strategy: **one metro first, then national (one country).** Never hardcode a city. Location/radius matters (nearby events), not an afterthought.
 
 ## Stack
 - Monorepo: **pnpm + Turborepo**
-- `apps/web` — **Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui**. Consumer site AND dealer dashboard (`/dealer` route group).
+- `apps/web` — **Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui**. The app (Feed, Reels, Events) plus the parked marketplace and dealer dashboard.
 - `apps/mobile` — Expo (React Native). **Not yet. Do not create.**
 - `packages/shared` — Zod schemas, types, pure business logic (must be reusable by mobile later)
 - `packages/db` — generated Supabase types + typed query helpers

@@ -266,6 +266,149 @@ export type Database = {
           },
         ];
       };
+      event_rsvps: {
+        Row: {
+          created_at: string;
+          event_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          event_id: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_rsvps_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'event_rsvps_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      events: {
+        Row: {
+          address: string | null;
+          cancelled_at: string | null;
+          capacity: number | null;
+          city: string | null;
+          cover_path: string | null;
+          created_at: string;
+          description: string;
+          ends_at: string | null;
+          going_count: number;
+          host_id: string;
+          id: string;
+          location: unknown;
+          postal_code: string;
+          region: string | null;
+          starts_at: string;
+          timezone: string;
+          title: string;
+          updated_at: string;
+          venue_name: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          address?: string | null;
+          cancelled_at?: string | null;
+          capacity?: number | null;
+          city?: string | null;
+          cover_path?: string | null;
+          created_at?: string;
+          description?: string;
+          ends_at?: string | null;
+          going_count?: number;
+          host_id?: string;
+          id?: string;
+          location?: unknown;
+          postal_code: string;
+          region?: string | null;
+          starts_at: string;
+          timezone: string;
+          title: string;
+          updated_at?: string;
+          venue_name: string;
+        };
+        Update: {
+          address?: string | null;
+          cancelled_at?: string | null;
+          capacity?: number | null;
+          city?: string | null;
+          cover_path?: string | null;
+          created_at?: string;
+          description?: string;
+          ends_at?: string | null;
+          going_count?: number;
+          host_id?: string;
+          id?: string;
+          location?: unknown;
+          postal_code?: string;
+          region?: string | null;
+          starts_at?: string;
+          timezone?: string;
+          title?: string;
+          updated_at?: string;
+          venue_name?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'events_host_id_fkey';
+            columns: ['host_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      follows: {
+        Row: {
+          created_at: string;
+          followee_id: string;
+          follower_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          followee_id: string;
+          follower_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          followee_id?: string;
+          follower_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'follows_followee_id_fkey';
+            columns: ['followee_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'follows_follower_id_fkey';
+            columns: ['follower_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       listing_photos: {
         Row: {
           created_at: string;
@@ -505,6 +648,40 @@ export type Database = {
           },
         ];
       };
+      post_likes: {
+        Row: {
+          created_at: string;
+          post_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          post_id: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          post_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'post_likes_post_id_fkey';
+            columns: ['post_id'];
+            isOneToOne: false;
+            referencedRelation: 'posts';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'post_likes_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       postal_codes: {
         Row: {
           city: string | null;
@@ -529,6 +706,55 @@ export type Database = {
           region?: string | null;
         };
         Relationships: [];
+      };
+      posts: {
+        Row: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          id: string;
+          like_count: number;
+          photos: NonNullable<Json>;
+          reply_count: number;
+          reply_to_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          author_id?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          like_count?: number;
+          photos?: NonNullable<Json>;
+          reply_count?: number;
+          reply_to_id?: string | null;
+        };
+        Update: {
+          author_id?: string;
+          body?: string;
+          created_at?: string;
+          id?: string;
+          like_count?: number;
+          photos?: NonNullable<Json>;
+          reply_count?: number;
+          reply_to_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'posts_author_id_fkey';
+            columns: ['author_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'posts_reply_to_id_fkey';
+            columns: ['reply_to_id'];
+            isOneToOne: false;
+            referencedRelation: 'posts';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       profile_private: {
         Row: {
@@ -599,6 +825,88 @@ export type Database = {
           username?: string;
         };
         Relationships: [];
+      };
+      reel_likes: {
+        Row: {
+          created_at: string;
+          reel_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          reel_id: string;
+          user_id?: string;
+        };
+        Update: {
+          created_at?: string;
+          reel_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reel_likes_reel_id_fkey';
+            columns: ['reel_id'];
+            isOneToOne: false;
+            referencedRelation: 'reels';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'reel_likes_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      reels: {
+        Row: {
+          author_id: string;
+          caption: string;
+          created_at: string;
+          duration_seconds: number;
+          height: number;
+          id: string;
+          like_count: number;
+          poster_path: string;
+          video_path: string;
+          width: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          author_id?: string;
+          caption?: string;
+          created_at?: string;
+          duration_seconds: number;
+          height: number;
+          id?: string;
+          like_count?: number;
+          poster_path: string;
+          video_path: string;
+          width: number;
+        };
+        Update: {
+          author_id?: string;
+          caption?: string;
+          created_at?: string;
+          duration_seconds?: number;
+          height?: number;
+          id?: string;
+          like_count?: number;
+          poster_path?: string;
+          video_path?: string;
+          width?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'reels_author_id_fkey';
+            columns: ['author_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       reports: {
         Row: {
@@ -930,6 +1238,25 @@ export type Database = {
         };
         Returns: string;
       };
+      following_feed: {
+        Args: { p_before?: string; p_before_id?: string; p_limit?: number };
+        Returns: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          id: string;
+          like_count: number;
+          photos: NonNullable<Json>;
+          reply_count: number;
+          reply_to_id: string | null;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'posts';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       listing_insights: {
         Args: { p_listing_ids: string[] };
         Returns: {
@@ -1005,6 +1332,36 @@ export type Database = {
         Returns: undefined;
       };
       start_conversation: { Args: { p_body: string; p_listing_id: string }; Returns: string };
+      upcoming_events: {
+        Args: { p_lat?: number; p_limit?: number; p_lng?: number; p_radius_miles?: number };
+        Returns: {
+          address: string | null;
+          cancelled_at: string | null;
+          capacity: number | null;
+          city: string | null;
+          cover_path: string | null;
+          created_at: string;
+          description: string;
+          ends_at: string | null;
+          going_count: number;
+          host_id: string;
+          id: string;
+          location: unknown;
+          postal_code: string;
+          region: string | null;
+          starts_at: string;
+          timezone: string;
+          title: string;
+          updated_at: string;
+          venue_name: string;
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'events';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
     };
     Enums: {
       app_role: 'user' | 'admin';

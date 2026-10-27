@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { routeRedirect } from './route-guard';
+import { hiddenForLaunch, routeRedirect } from './route-guard';
 
 describe('routeRedirect', () => {
   it('sends signed-out users on protected routes to sign-in with a safe next', () => {
@@ -26,5 +26,38 @@ describe('routeRedirect', () => {
   it('leaves public routes alone', () => {
     expect(routeRedirect('/', '', false)).toBeNull();
     expect(routeRedirect('/listings/123', '', true)).toBeNull();
+  });
+});
+
+describe('hiddenForLaunch', () => {
+  it('switches off the marketplace, selling and dealer areas', () => {
+    for (const path of [
+      '/search',
+      '/listings/abc',
+      '/dealers/x',
+      '/dealer',
+      '/dealer/d1/inventory',
+      '/account/listings/new',
+      '/account/messages',
+      '/account/saved',
+    ]) {
+      expect(hiddenForLaunch(path)).toBe(true);
+    }
+  });
+
+  it('keeps the launch app reachable', () => {
+    for (const path of [
+      '/',
+      '/reels',
+      '/events',
+      '/p/abc',
+      '/u/someone',
+      '/account',
+      '/account/settings',
+      '/sign-in',
+      '/searchable',
+    ]) {
+      expect(hiddenForLaunch(path)).toBe(false);
+    }
   });
 });

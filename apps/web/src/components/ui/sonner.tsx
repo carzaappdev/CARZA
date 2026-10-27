@@ -10,6 +10,8 @@ export function Toaster(props: ToasterProps) {
     <Sonner
       theme={resolvedTheme === 'dark' ? 'dark' : 'light'}
       className="toaster group"
+      // Clear the bottom tab bar on phones.
+      mobileOffset={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
       style={
         {
           '--normal-bg': 'var(--popover)',
