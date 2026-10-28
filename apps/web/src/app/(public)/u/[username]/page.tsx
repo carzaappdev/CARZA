@@ -7,13 +7,16 @@ import { getProfile, getGarage, getProfilePosts } from '@carza/db';
 import { formatCount } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { FollowButton } from '@/components/feed/follow-button';
+import { FeatureToggle } from '@/components/founders/feature-toggle';
+import { ProfileBadges } from '@/components/founders/founder-badge';
 import { GarageShowcase } from '@/components/garage/garage-showcase';
 import { SafetyMenu } from '@/components/safety/safety-menu';
 import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
 import { UserAvatar } from '@/components/feed/user-avatar';
+import { ShareButton } from '@/components/listings/share-button';
 import { Button } from '@/components/ui/button';
-import { getUser } from '@/lib/auth';
+import { getUser, isAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 
@@ -47,9 +50,11 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const viewerId = user?.id ?? null;
   const isOwn = viewerId === profile.id;
   const supabase = await createClient();
-  const [posts, garage] = await Promise.all([
+  const [posts, garage, admin, invites] = await Promise.all([
     getProfilePosts(supabase, profile.id, tab, viewerId),
     getGarage(supabase, profile.id),
+    viewerId && !isOwn ? isAdmin() : false,
+    isOwn ? supabase.rpc('my_invite_count').then((r) => r.data ?? 0) : 0,
   ]);
   const base = `/u/${profile.username}`;
 
@@ -76,6 +81,13 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             )}
           </div>
         </div>
+        <ProfileBadges
+          foundingNumber={profile.founding_number}
+          featured={profile.featured_at !== null}
+        />
+        {admin ? (
+          <FeatureToggle userId={profile.id} featured={profile.featured_at !== null} />
+        ) : null}
         {profile.bio ? (
           <p className="text-[15px] leading-[1.4] whitespace-pre-wrap">{profile.bio}</p>
         ) : null}
@@ -105,6 +117,12 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             <Button asChild variant="outline" className="rounded-xl">
               <Link href="/account/garage">{garage.length ? 'Edit garage' : 'Add your car'}</Link>
             </Button>
+            <ShareButton
+              title="Join me on Carza"
+              path={`/join/${profile.username}`}
+              label={invites ? `Invite friends · ${invites} joined` : 'Invite friends'}
+              className="col-span-2 rounded-xl"
+            />
           </div>
         ) : profile.viewerBlocked ? (
           <UnblockButton userId={profile.id} username={profile.username} />

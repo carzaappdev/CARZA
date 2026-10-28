@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { fail, ok, resolveReportSchema, type ActionResult } from '@carza/shared';
+import { fail, ok, resolveReportSchema, setFeaturedSchema, type ActionResult } from '@carza/shared';
 import { getUser, isAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -55,4 +55,26 @@ export async function resolveReport(input: unknown): Promise<ActionResult<null>>
   }
   revalidatePath('/account/reports');
   return ok(null);
+}
+
+/** Admins only: feature someone in "who to follow" (the database checks the role too). */
+export async function setFeatured(input: unknown): Promise<ActionResult<{ featured: boolean }>> {
+  const parsed = setFeaturedSchema.safeParse(input);
+  if (!parsed.success) return fail('VALIDATION', 'That request wasn’t valid.');
+  const user = await getUser();
+  if (!user) return fail('UNAUTHENTICATED', 'Sign in first.');
+  if (!(await isAdmin())) return fail('FORBIDDEN', 'Only admins can do that.');
+  const { userId, featured } = parsed.data;
+  const { error } = await (
+    await createClient()
+  ).rpc('set_featured', {
+    p_user_id: userId,
+    p_featured: featured,
+  });
+  if (error) {
+    console.error('setFeatured failed', { code: error.code, userId: user.id });
+    return fail('INTERNAL', 'Couldn’t update. Try again.');
+  }
+  revalidatePath('/u/[username]', 'page');
+  return ok({ featured });
 }

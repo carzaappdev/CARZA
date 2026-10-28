@@ -230,7 +230,9 @@ export async function getProfilePosts(
 export async function getProfile(client: TypedClient, username: string, viewerId: string | null) {
   const { data: profile, error } = await client
     .from('profiles')
-    .select('id, username, display_name, avatar_path, bio, city, region, created_at')
+    .select(
+      'id, username, display_name, avatar_path, bio, city, region, created_at, founding_number, featured_at',
+    )
     .eq('username', username)
     .maybeSingle();
   if (error) throw error;
