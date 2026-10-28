@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import type { ReelView } from '@carza/db';
 import { formatCount } from '@carza/shared';
 import { UserAvatar } from '@/components/feed/user-avatar';
+import { useSafetyActions } from '@/components/safety/use-safety-actions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +46,13 @@ export function ReelItem({
   const [optimistic, setOptimistic] = useOptimistic(like);
   const [, startTransition] = useTransition();
   const [burst, setBurst] = useState(0);
+  const safety = useSafetyActions({
+    targetType: 'reel',
+    targetId: reel.id,
+    owner: reel.author,
+    viewerId,
+    onBlocked: onDeleted,
+  });
   // Vertical clips fill the screen; landscape ones are letterboxed rather than cropped.
   const fit = reel.height >= reel.width ? 'object-cover' : 'object-contain';
   const poster = publicStorageUrl('reels', reel.posterPath);
@@ -190,7 +198,7 @@ export function ReelItem({
               <SendIcon className="size-6" aria-hidden />
             </span>
           </button>
-          {reel.author.id === viewerId ? (
+          {reel.author.id === viewerId || safety.items ? (
             <DropdownMenu>
               <DropdownMenuTrigger className={railButton} aria-label="More">
                 <span className={railIcon}>
@@ -198,25 +206,29 @@ export function ReelItem({
                 </span>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" side="top">
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive [&_svg]:text-destructive"
-                  onSelect={() => {
-                    if (!window.confirm('Delete this reel? This can’t be undone.')) return;
-                    void deleteReel({ reelId: reel.id }).then((result) => {
-                      if (!result.ok) {
-                        toast.error(result.error.message);
-                        return;
-                      }
-                      toast.success('Reel deleted');
-                      onDeleted();
-                    });
-                  }}
-                >
-                  <Trash2Icon /> Delete
-                </DropdownMenuItem>
+                {safety.items}
+                {reel.author.id === viewerId ? (
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive [&_svg]:text-destructive"
+                    onSelect={() => {
+                      if (!window.confirm('Delete this reel? This can’t be undone.')) return;
+                      void deleteReel({ reelId: reel.id }).then((result) => {
+                        if (!result.ok) {
+                          toast.error(result.error.message);
+                          return;
+                        }
+                        toast.success('Reel deleted');
+                        onDeleted();
+                      });
+                    }}
+                  >
+                    <Trash2Icon /> Delete
+                  </DropdownMenuItem>
+                ) : null}
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
+          {safety.dialog}
         </div>
       </div>
     </div>

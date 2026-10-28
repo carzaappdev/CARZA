@@ -10,65 +10,85 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useSafetyActions } from '@/components/safety/use-safety-actions';
 import { deletePost } from '@/lib/actions/posts';
 
 export function PostMenu({
   postId,
-  isOwn,
+  author,
+  viewerId,
   onDeleted,
 }: {
   postId: string;
-  isOwn: boolean;
+  author: { id: string; username: string };
+  viewerId: string | null;
+  /** Called when the post leaves this list (deleted, or its author blocked). */
   onDeleted?: () => void;
 }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const pathname = usePathname();
+  const isOwn = author.id === viewerId;
+  const safety = useSafetyActions({
+    targetType: 'post',
+    targetId: postId,
+    owner: author,
+    viewerId,
+    onBlocked: () => {
+      if (pathname === `/p/${postId}`) return router.replace('/');
+      onDeleted?.();
+      router.refresh();
+    },
+  });
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/50 relative z-10 -mt-2 -mr-2 grid size-9 place-items-center rounded-full outline-none focus-visible:ring-[3px]"
-        aria-label="More"
-        disabled={pending}
-      >
-        <MoreHorizontalIcon className="size-5" aria-hidden />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem
-          onSelect={async () => {
-            try {
-              await navigator.clipboard.writeText(`${window.location.origin}/p/${postId}`);
-              toast.success('Link copied');
-            } catch {
-              toast.error('Couldn’t copy the link');
-            }
-          }}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring/50 relative z-10 -mt-2 -mr-2 grid size-9 place-items-center rounded-full outline-none focus-visible:ring-[3px]"
+          aria-label="More"
+          disabled={pending}
         >
-          <LinkIcon /> Copy link
-        </DropdownMenuItem>
-        {isOwn ? (
+          <MoreHorizontalIcon className="size-5" aria-hidden />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
-            className="text-destructive focus:text-destructive [&_svg]:text-destructive"
-            onSelect={() => {
-              if (!window.confirm('Delete this post? This can’t be undone.')) return;
-              startTransition(async () => {
-                const result = await deletePost({ postId });
-                if (!result.ok) {
-                  toast.error(result.error.message);
-                  return;
-                }
-                toast.success('Post deleted');
-                if (onDeleted) onDeleted();
-                // On the post's own page there's nothing left to show.
-                else if (pathname === `/p/${postId}`) router.replace('/');
-                else router.refresh();
-              });
+            onSelect={async () => {
+              try {
+                await navigator.clipboard.writeText(`${window.location.origin}/p/${postId}`);
+                toast.success('Link copied');
+              } catch {
+                toast.error('Couldn’t copy the link');
+              }
             }}
           >
-            <Trash2Icon /> Delete
+            <LinkIcon /> Copy link
           </DropdownMenuItem>
-        ) : null}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {isOwn ? (
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive [&_svg]:text-destructive"
+              onSelect={() => {
+                if (!window.confirm('Delete this post? This can’t be undone.')) return;
+                startTransition(async () => {
+                  const result = await deletePost({ postId });
+                  if (!result.ok) {
+                    toast.error(result.error.message);
+                    return;
+                  }
+                  toast.success('Post deleted');
+                  if (onDeleted) onDeleted();
+                  // On the post's own page there's nothing left to show.
+                  else if (pathname === `/p/${postId}`) router.replace('/');
+                  else router.refresh();
+                });
+              }}
+            >
+              <Trash2Icon /> Delete
+            </DropdownMenuItem>
+          ) : null}
+          {safety.items}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {safety.dialog}
+    </>
   );
 }
