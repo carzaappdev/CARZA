@@ -1,5 +1,6 @@
 import type { Route } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { MessagesSquareIcon, UsersIcon } from 'lucide-react';
 import { getFeed } from '@carza/db';
 import { EmptyState } from '@/components/feedback/empty-state';
@@ -16,6 +17,17 @@ export default async function FeedPage({
   searchParams: Promise<{ feed?: string | string[] }>;
 }) {
   const viewer = await getViewer();
+  if (viewer) {
+    // First visit after signing up: run the short setup first.
+    const { data: setup } = await (
+      await createClient()
+    )
+      .from('profile_private')
+      .select('onboarded_at')
+      .eq('user_id', viewer.id)
+      .maybeSingle();
+    if (setup && !setup.onboarded_at) redirect('/welcome');
+  }
   const feed = (await searchParams).feed === 'following' && viewer ? 'following' : 'for-you';
   const initial = await getFeed(
     await createClient(),

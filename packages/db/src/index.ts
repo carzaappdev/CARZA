@@ -21,3 +21,4 @@ export * from './queries/posts';
 export * from './queries/events';
 export * from './queries/reels';
 export * from './queries/notifications';
+export * from './queries/garage';

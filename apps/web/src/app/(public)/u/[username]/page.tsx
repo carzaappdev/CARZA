@@ -3,10 +3,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { MessagesSquareIcon } from 'lucide-react';
-import { getProfile, getProfilePosts } from '@carza/db';
+import { getProfile, getGarage, getProfilePosts } from '@carza/db';
 import { formatCount } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { FollowButton } from '@/components/feed/follow-button';
+import { GarageShowcase } from '@/components/garage/garage-showcase';
 import { SafetyMenu } from '@/components/safety/safety-menu';
 import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
@@ -45,7 +46,11 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const user = await getUser();
   const viewerId = user?.id ?? null;
   const isOwn = viewerId === profile.id;
-  const posts = await getProfilePosts(await createClient(), profile.id, tab, viewerId);
+  const supabase = await createClient();
+  const [posts, garage] = await Promise.all([
+    getProfilePosts(supabase, profile.id, tab, viewerId),
+    getGarage(supabase, profile.id),
+  ]);
   const base = `/u/${profile.username}`;
 
   return (
@@ -74,6 +79,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         {profile.bio ? (
           <p className="text-[15px] leading-[1.4] whitespace-pre-wrap">{profile.bio}</p>
         ) : null}
+        <GarageShowcase cars={garage} />
         <p className="text-muted-foreground text-sm">
           <span className="text-foreground font-semibold tabular-nums">
             {formatCount(profile.followerCount)}
@@ -92,9 +98,14 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           ) : null}
         </p>
         {isOwn ? (
-          <Button asChild variant="outline" className="w-full rounded-xl">
-            <Link href="/account/settings">Edit profile</Link>
-          </Button>
+          <div className="grid grid-cols-2 gap-2">
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link href="/account/settings">Edit profile</Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-xl">
+              <Link href="/account/garage">{garage.length ? 'Edit garage' : 'Add your car'}</Link>
+            </Button>
+          </div>
         ) : profile.viewerBlocked ? (
           <UnblockButton userId={profile.id} username={profile.username} />
         ) : (
