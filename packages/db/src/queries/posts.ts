@@ -3,7 +3,7 @@ import { LIMITS, postPhotoSchema, type FeedCursor, type PostPhoto } from '@carza
 import type { TypedClient } from '../index';
 
 const POST_FIELDS = `
-  id, body, photos, like_count, reply_count, created_at, reply_to_id,
+  id, body, photos, like_count, reply_count, created_at, reply_to_id, reel_id,
   author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_path ),
   event:events ( id, title )
 ` as const;
@@ -25,6 +25,8 @@ export type PostView = {
   replyCount: number;
   createdAt: string;
   replyToId: string | null;
+  /** Set when the post is a comment on a reel. */
+  reelId: string | null;
   author: PostAuthor;
   /** The event this post was shared to, if any (null when hidden from the viewer). */
   event: { id: string; title: string } | null;
@@ -39,6 +41,7 @@ type PostRow = {
   reply_count: number;
   created_at: string;
   reply_to_id: string | null;
+  reel_id: string | null;
   author: PostAuthor | null;
   event: { id: string; title: string } | null;
 };
@@ -67,6 +70,7 @@ async function hydrate(client: TypedClient, rows: PostRow[], viewerId: string | 
             replyCount: r.reply_count,
             createdAt: r.created_at,
             replyToId: r.reply_to_id,
+            reelId: r.reel_id,
             author: r.author,
             event: r.event,
             liked: liked.has(r.id),
@@ -114,6 +118,7 @@ export async function getFeed(
     .from('posts')
     .select(POST_FIELDS)
     .is('reply_to_id', null)
+    .is('reel_id', null)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(size);
@@ -147,6 +152,22 @@ export async function getEventPosts(client: TypedClient, eventId: string, viewer
   return hydrate(client, data, viewerId);
 }
 
+/** Comments on a reel, oldest first. */
+export async function getReelComments(
+  client: TypedClient,
+  reelId: string,
+  viewerId: string | null,
+) {
+  const { data, error } = await client
+    .from('posts')
+    .select(POST_FIELDS)
+    .eq('reel_id', reelId)
+    .order('created_at', { ascending: true })
+    .limit(200);
+  if (error) throw error;
+  return hydrate(client, data, viewerId);
+}
+
 /** Replies to a post, oldest first (reads as a conversation). */
 export async function getReplies(client: TypedClient, postId: string, viewerId: string | null) {
   const { data, error } = await client
@@ -167,8 +188,11 @@ export async function getProfilePosts(
   viewerId: string | null,
 ) {
   const base = client.from('posts').select(POST_FIELDS).eq('author_id', authorId);
-  const { data, error } = await (
-    kind === 'posts' ? base.is('reply_to_id', null) : base.not('reply_to_id', 'is', null)
+  const { data, error } = await // Reel comments count as replies on a profile.
+  (
+    kind === 'posts'
+      ? base.is('reply_to_id', null).is('reel_id', null)
+      : base.or('reply_to_id.not.is.null,reel_id.not.is.null')
   )
     .order('created_at', { ascending: false })
     .limit(50);

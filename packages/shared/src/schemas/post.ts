@@ -15,12 +15,15 @@ export const createPostSchema = z
     photos: z.array(postPhotoSchema).max(LIMITS.postPhotosMax, 'Up to 4 photos per post.'),
     replyToId: z.guid().nullable(),
     eventId: z.guid().nullable().default(null),
+    reelId: z.guid().nullable().default(null),
   })
   .refine((p) => p.body.length > 0 || p.photos.length > 0, {
     message: 'Write something or add a photo.',
     path: ['body'],
   })
-  .refine((p) => !(p.eventId && p.replyToId), { message: 'Replies can’t belong to an event.' });
+  .refine((p) => [p.replyToId, p.eventId, p.reelId].filter(Boolean).length <= 1, {
+    message: 'A post can reply to one thing at a time.',
+  });
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 
 export const postIdSchema = z.object({ postId: z.guid() });

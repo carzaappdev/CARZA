@@ -1,12 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getReels, type ReelsPage } from '@carza/db';
+import { getReelComments, getReels, type PostView, type ReelsPage } from '@carza/db';
 import {
   createReelSchema,
   fail,
   ok,
   reelCursorSchema,
+  recordReelViewSchema,
   reelIdSchema,
   setReelLikedSchema,
   type ActionResult,
@@ -110,4 +111,30 @@ export async function loadReelsPage(input: unknown): Promise<ActionResult<ReelsP
     console.error('loadReelsPage failed', { error: (e as { code?: string }).code });
     return fail('INTERNAL', 'Couldn’t load more reels.');
   }
+}
+
+/** Comments for the reel's comment sheet. */
+export async function loadReelComments(input: unknown): Promise<ActionResult<PostView[]>> {
+  const parsed = reelIdSchema.safeParse(input);
+  if (!parsed.success) return fail('VALIDATION', 'That request wasn’t valid.');
+  const user = await getUser();
+  try {
+    return ok(await getReelComments(await createClient(), parsed.data.reelId, user?.id ?? null));
+  } catch {
+    return fail('INTERNAL', 'Couldn’t load comments.');
+  }
+}
+
+/** Counts a view once per viewer (guests are identified by a random id their browser keeps). */
+export async function recordReelView(input: unknown): Promise<ActionResult<null>> {
+  const parsed = recordReelViewSchema.safeParse(input);
+  if (!parsed.success) return fail('VALIDATION', 'That request wasn’t valid.');
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('record_reel_view', {
+    p_reel_id: parsed.data.reelId,
+    p_guest_id: parsed.data.guestId ?? undefined,
+  });
+  // Views are best-effort: a rate limit or a deleted reel isn't worth an error.
+  if (error && error.code !== 'CZ429') console.error('recordReelView failed', { code: error.code });
+  return ok(null);
 }

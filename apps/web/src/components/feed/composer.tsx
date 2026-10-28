@@ -19,6 +19,8 @@ export function Composer({
   viewer,
   replyToId = null,
   eventId = null,
+  reelId = null,
+  onPosted,
   placeholder = 'What’s new in your garage?',
   autoFocus = false,
 }: {
@@ -26,6 +28,10 @@ export function Composer({
   replyToId?: string | null;
   /** Shares the post to this event's page too. */
   eventId?: string | null;
+  /** Makes the post a comment on this reel. */
+  reelId?: string | null;
+  /** Called after posting, instead of refreshing the page. */
+  onPosted?: () => void;
   placeholder?: string;
   autoFocus?: boolean;
 }) {
@@ -85,7 +91,7 @@ export function Composer({
     if (!canPost) return;
     startTransition(async () => {
       const photos = drafts.flatMap((d) => (d.photo ? [d.photo] : []));
-      const result = await createPost({ body, photos, replyToId, eventId });
+      const result = await createPost({ body, photos, replyToId, eventId, reelId });
       if (!result.ok) {
         toast.error(result.error.message);
         return;
@@ -93,6 +99,7 @@ export function Composer({
       drafts.forEach((d) => URL.revokeObjectURL(d.previewUrl));
       setBody('');
       setDrafts([]);
+      if (onPosted) return onPosted();
       toast.success(replyToId ? 'Reply posted' : 'Posted');
       router.refresh();
     });
