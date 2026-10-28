@@ -18,11 +18,14 @@ type Draft = { key: string; previewUrl: string; photo: PostPhoto | null };
 export function Composer({
   viewer,
   replyToId = null,
+  eventId = null,
   placeholder = 'What’s new in your garage?',
   autoFocus = false,
 }: {
   viewer: { displayName: string; avatarPath: string | null };
   replyToId?: string | null;
+  /** Shares the post to this event's page too. */
+  eventId?: string | null;
   placeholder?: string;
   autoFocus?: boolean;
 }) {
@@ -82,7 +85,7 @@ export function Composer({
     if (!canPost) return;
     startTransition(async () => {
       const photos = drafts.flatMap((d) => (d.photo ? [d.photo] : []));
-      const result = await createPost({ body, photos, replyToId });
+      const result = await createPost({ body, photos, replyToId, eventId });
       if (!result.ok) {
         toast.error(result.error.message);
         return;
