@@ -20,3 +20,4 @@ export * from './schemas/safety';
 export * from './schemas/moderation';
 export * from './logic/notifications';
 export * from './schemas/garage';
+export * from './logic/calendar';

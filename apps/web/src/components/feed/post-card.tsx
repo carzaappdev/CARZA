@@ -2,6 +2,7 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
+import { CalendarDaysIcon } from 'lucide-react';
 import { formatRelativeTime } from '@carza/shared';
 import type { PostView } from '@carza/db';
 import { cn } from '@/lib/utils';
@@ -20,6 +21,7 @@ export function PostCard({
   size = 'md',
   showReplyContext = false,
   connector = false,
+  showEvent = true,
   onDeleted,
 }: {
   post: PostView;
@@ -28,6 +30,8 @@ export function PostCard({
   showReplyContext?: boolean;
   /** Draws a thread line down from the avatar (the parent above a focused post). */
   connector?: boolean;
+  /** Shows which event the post was shared to (off on the event's own page). */
+  showEvent?: boolean;
   onDeleted?: () => void;
 }) {
   const profileHref = `/u/${post.author.username}` as Route;
@@ -87,6 +91,15 @@ export function PostCard({
             onDeleted={onDeleted}
           />
         </div>
+        {post.event && showEvent ? (
+          <Link
+            href={`/events/${post.event.id}` as Route}
+            className="text-muted-foreground hover:text-foreground relative z-10 mt-0.5 inline-flex max-w-full items-center gap-1 text-sm font-medium"
+          >
+            <CalendarDaysIcon className="size-3.5 shrink-0" aria-hidden />
+            <span className="truncate">{post.event.title}</span>
+          </Link>
+        ) : null}
         {showReplyContext && post.replyToId ? (
           <Link
             href={`/p/${post.replyToId}` as Route}
