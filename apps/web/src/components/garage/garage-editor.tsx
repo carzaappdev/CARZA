@@ -21,7 +21,7 @@ const fieldClass =
 
 const empty = { year: '', makeId: '', modelId: '', nickname: '' };
 
-/** Add and remove the cars on your profile. */
+/** Quick add and remove for the cars on your profile (first-run setup). */
 export function GarageEditor({ initial, catalog }: { initial: GarageCar[]; catalog: Catalog }) {
   const [cars, setCars] = useState(initial);
   const [adding, setAdding] = useState(initial.length === 0);
@@ -55,7 +55,7 @@ export function GarageEditor({ initial, catalog }: { initial: GarageCar[]; catal
 
   function save() {
     startTransition(async () => {
-      const result = await addGarageCar({ ...form, photoPath: photo?.path ?? null });
+      const result = await addGarageCar({ ...form, photoPaths: photo ? [photo.path] : [] });
       if (!result.ok) {
         toast.error(result.error.message);
         return;
@@ -65,10 +65,16 @@ export function GarageEditor({ initial, catalog }: { initial: GarageCar[]; catal
         {
           id: result.data.id,
           year: Number(form.year),
+          makeId: Number(form.makeId),
+          modelId: Number(form.modelId),
           make: catalog.makes.find((m) => String(m.id) === form.makeId)?.name ?? '',
           model: models.find((m) => String(m.id) === form.modelId)?.name ?? '',
+          trimLevel: null,
           nickname: form.nickname.trim() || null,
+          story: null,
           photoPath: photo?.path ?? null,
+          photos: photo ? [photo.path] : [],
+          modCount: 0,
         },
       ]);
       setForm(empty);

@@ -140,6 +140,26 @@ export async function getTagPosts(client: TypedClient, tag: string, viewerId: st
   return hydrate(client, data, viewerId);
 }
 
+/** Top-level posts tagged with any of a car's #tags (see carTags), newest first. */
+export async function getCarPosts(
+  client: TypedClient,
+  tags: string[],
+  viewerId: string | null,
+  limit = 6,
+) {
+  if (!tags.length) return [];
+  const { data, error } = await client
+    .from('posts')
+    .select(POST_FIELDS)
+    .is('reply_to_id', null)
+    .is('reel_id', null)
+    .overlaps('tags', tags)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return hydrate(client, data, viewerId);
+}
+
 /** The most used #tags lately. */
 export async function getTrendingTags(client: TypedClient, limit = 12) {
   const { data, error } = await client.rpc('trending_tags', { p_days: 7, p_limit: limit });

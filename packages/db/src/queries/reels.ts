@@ -108,3 +108,21 @@ export async function getReel(client: TypedClient, id: string, viewerId: string 
   if (error) throw error;
   return data ? ((await hydrate(client, [data], viewerId))[0] ?? null) : null;
 }
+
+/** The newest reels by any of these people (e.g. owners of the same car). */
+export async function getReelsByAuthors(
+  client: TypedClient,
+  authorIds: string[],
+  viewerId: string | null,
+  limit = 6,
+) {
+  if (!authorIds.length) return [];
+  const { data, error } = await client
+    .from('reels')
+    .select(REEL_FIELDS)
+    .in('author_id', authorIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return hydrate(client, data, viewerId);
+}
