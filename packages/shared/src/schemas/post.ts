@@ -32,12 +32,25 @@ export const setPostLikedSchema = z.object({ postId: z.guid(), liked: z.boolean(
 
 export const setFollowingSchema = z.object({ userId: z.guid(), following: z.boolean() });
 
-/** Keyset cursor for the feeds: the last post seen. */
+/** Where the next feed page starts: the last post seen (Following), or how many ranked posts were seen (For you). */
 export const feedCursorSchema = z.object({
   feed: z.enum(['for-you', 'following']),
   before: z.iso.datetime({ offset: true }).nullable(),
   beforeId: z.guid().nullable(),
+  offset: z.number().int().min(0).max(1000).optional(),
 });
+
+/** A people search: letters, numbers, spaces and underscores only (it goes into a PostgREST filter). */
+export const peopleQuerySchema = z
+  .string()
+  .trim()
+  .transform((q) =>
+    q
+      .replace(/^@/, '')
+      .replace(/[^A-Za-z0-9_ ]/g, '')
+      .slice(0, 30)
+      .trim(),
+  );
 export type FeedCursor = z.infer<typeof feedCursorSchema>;
 
 /** Ask for an upload slot for one post photo. */
