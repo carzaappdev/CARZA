@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from 'next-themes';
-import { ThemeColor, THEME_COLORS } from '@/components/theme/theme-color';
+import { THEME_COLORS } from '@/components/theme/colors';
+import { ThemeColor } from '@/components/theme/theme-color';
 import { Toaster } from '@/components/ui/sonner';
 import { clientEnv } from '@/env/client';
 import { inter, sora } from './fonts';
@@ -9,9 +10,10 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(clientEnv.NEXT_PUBLIC_SITE_URL),
-  title: { default: 'Carza: buy and sell cars locally', template: '%s · Carza' },
+  title: { default: 'Carza: your local car scene', template: '%s · Carza' },
   applicationName: 'Carza',
-  description: 'Find cars from local dealers and private sellers near you.',
+  description:
+    'Share your ride, swipe through car reels and find meets, cruises and shows near you.',
 };
 
 export const viewport: Viewport = {
