@@ -350,6 +350,7 @@ export type Database = {
           location: unknown;
           postal_code: string;
           region: string | null;
+          reminded_at: string | null;
           starts_at: string;
           timezone: string;
           title: string;
@@ -372,6 +373,7 @@ export type Database = {
           location?: unknown;
           postal_code: string;
           region?: string | null;
+          reminded_at?: string | null;
           starts_at: string;
           timezone: string;
           title: string;
@@ -393,6 +395,7 @@ export type Database = {
           location?: unknown;
           postal_code?: string;
           region?: string | null;
+          reminded_at?: string | null;
           starts_at?: string;
           timezone?: string;
           title?: string;
@@ -1383,6 +1386,7 @@ export type Database = {
           location: unknown;
           postal_code: string;
           region: string | null;
+          reminded_at: string | null;
           starts_at: string;
           timezone: string;
           title: string;
@@ -1425,7 +1429,16 @@ export type Database = {
         | 'test_drive_cancelled'
         | 'dealership_verified'
         | 'dealership_rejected'
-        | 'dealership_invite';
+        | 'dealership_invite'
+        | 'new_follower'
+        | 'post_like'
+        | 'post_reply'
+        | 'mention'
+        | 'reel_like'
+        | 'reel_comment'
+        | 'event_rsvp'
+        | 'event_reminder'
+        | 'event_cancelled';
       report_reason: 'scam' | 'spam' | 'offensive' | 'misleading' | 'stolen' | 'other';
       report_status: 'open' | 'reviewing' | 'resolved' | 'dismissed';
       report_target: 'listing' | 'user' | 'message' | 'dealership' | 'post' | 'reel' | 'event';
@@ -1571,6 +1584,15 @@ export const Constants = {
         'dealership_verified',
         'dealership_rejected',
         'dealership_invite',
+        'new_follower',
+        'post_like',
+        'post_reply',
+        'mention',
+        'reel_like',
+        'reel_comment',
+        'event_rsvp',
+        'event_reminder',
+        'event_cancelled',
       ],
       report_reason: ['scam', 'spam', 'offensive', 'misleading', 'stolen', 'other'],
       report_status: ['open', 'reviewing', 'resolved', 'dismissed'],

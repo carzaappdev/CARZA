@@ -47,6 +47,15 @@ export const NOTIFICATION_TYPES = [
   'dealership_verified',
   'dealership_rejected',
   'dealership_invite',
+  'new_follower',
+  'post_like',
+  'post_reply',
+  'mention',
+  'reel_like',
+  'reel_comment',
+  'event_rsvp',
+  'event_reminder',
+  'event_cancelled',
 ] as const;
 export const REPORT_TARGETS = [
   'listing',
