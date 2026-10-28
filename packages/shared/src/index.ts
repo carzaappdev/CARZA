@@ -18,3 +18,4 @@ export * from './schemas/event';
 export * from './schemas/reel';
 export * from './schemas/safety';
 export * from './schemas/moderation';
+export * from './logic/notifications';
