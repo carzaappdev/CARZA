@@ -874,6 +874,7 @@ export type Database = {
       };
       profile_private: {
         Row: {
+          invited_by: string | null;
           location: unknown;
           onboarded_at: string | null;
           postal_code: string | null;
@@ -882,6 +883,7 @@ export type Database = {
         };
         ComputedFields: never;
         Insert: {
+          invited_by?: string | null;
           location?: unknown;
           onboarded_at?: string | null;
           postal_code?: string | null;
@@ -889,6 +891,7 @@ export type Database = {
           user_id: string;
         };
         Update: {
+          invited_by?: string | null;
           location?: unknown;
           onboarded_at?: string | null;
           postal_code?: string | null;
@@ -896,6 +899,13 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'profile_private_invited_by_fkey';
+            columns: ['invited_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'profile_private_user_id_fkey';
             columns: ['user_id'];
@@ -913,6 +923,7 @@ export type Database = {
           created_at: string;
           display_name: string;
           featured_at: string | null;
+          founding_number: number | null;
           id: string;
           region: string | null;
           role: Database['public']['Enums']['app_role'];
@@ -927,6 +938,7 @@ export type Database = {
           created_at?: string;
           display_name: string;
           featured_at?: string | null;
+          founding_number?: number | null;
           id: string;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
@@ -940,6 +952,7 @@ export type Database = {
           created_at?: string;
           display_name?: string;
           featured_at?: string | null;
+          founding_number?: number | null;
           id?: string;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
@@ -1337,6 +1350,7 @@ export type Database = {
     };
     Functions: {
       accept_dealership_invitation: { Args: { p_token: string }; Returns: string };
+      accept_invite: { Args: { p_username: string }; Returns: undefined };
       admin_remove_listing: { Args: { p_listing_id: string }; Returns: undefined };
       apply_for_dealership: {
         Args: {
@@ -1421,6 +1435,7 @@ export type Database = {
         }[];
       };
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined };
+      my_invite_count: { Args: Record<PropertyKey, never>; Returns: number };
       record_reel_view: { Args: { p_guest_id?: string; p_reel_id: string }; Returns: undefined };
       request_test_drive: {
         Args: { p_listing_id: string; p_note?: string; p_proposed_times: string[] };
@@ -1486,6 +1501,7 @@ export type Database = {
         };
         Returns: undefined;
       };
+      set_featured: { Args: { p_featured: boolean; p_user_id: string }; Returns: undefined };
       start_conversation: { Args: { p_body: string; p_listing_id: string }; Returns: string };
       suggested_follows: {
         Args: { p_limit?: number };

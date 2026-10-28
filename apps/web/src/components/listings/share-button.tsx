@@ -5,9 +5,20 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 
 /** Native share sheet on phones; copies the link elsewhere. */
-export function ShareButton({ title, className }: { title: string; className?: string }) {
+export function ShareButton({
+  title,
+  className,
+  path,
+  label = 'Share',
+}: {
+  title: string;
+  className?: string;
+  /** Share this path on the site instead of the current page. */
+  path?: string;
+  label?: string;
+}) {
   async function share() {
-    const url = window.location.href;
+    const url = path ? new URL(path, window.location.origin).href : window.location.href;
     if (navigator.share) {
       try {
         await navigator.share({ title, url });
@@ -26,7 +37,7 @@ export function ShareButton({ title, className }: { title: string; className?: s
   return (
     <Button type="button" variant="outline" className={className} onClick={share}>
       <Share2Icon />
-      Share
+      {label}
     </Button>
   );
 }
