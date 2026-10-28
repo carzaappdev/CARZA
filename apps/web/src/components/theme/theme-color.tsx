@@ -2,9 +2,7 @@
 
 import { useTheme } from 'next-themes';
 import { useEffect } from 'react';
-
-/** The page background in each theme (the `--background` tokens), for the browser's toolbar color. */
-export const THEME_COLORS = { light: '#ffffff', dark: '#090d14' } as const;
+import { THEME_COLORS } from './colors';
 
 /**
  * The viewport `theme-color` tags follow the device setting. When someone picks a theme by hand, point
