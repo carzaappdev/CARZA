@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 
 export const Dialog = DialogPrimitive.Root;
 export const DialogClose = DialogPrimitive.Close;
+export const DialogTrigger = DialogPrimitive.Trigger;
 
 /** A bottom sheet on phones, a centered card from `sm` up. */
 export function DialogContent({

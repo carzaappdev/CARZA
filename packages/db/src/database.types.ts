@@ -809,6 +809,7 @@ export type Database = {
           id: string;
           like_count: number;
           photos: NonNullable<Json>;
+          reel_id: string | null;
           reply_count: number;
           reply_to_id: string | null;
         };
@@ -821,6 +822,7 @@ export type Database = {
           id?: string;
           like_count?: number;
           photos?: NonNullable<Json>;
+          reel_id?: string | null;
           reply_count?: number;
           reply_to_id?: string | null;
         };
@@ -832,6 +834,7 @@ export type Database = {
           id?: string;
           like_count?: number;
           photos?: NonNullable<Json>;
+          reel_id?: string | null;
           reply_count?: number;
           reply_to_id?: string | null;
         };
@@ -848,6 +851,13 @@ export type Database = {
             columns: ['event_id'];
             isOneToOne: false;
             referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'posts_reel_id_fkey';
+            columns: ['reel_id'];
+            isOneToOne: false;
+            referencedRelation: 'reels';
             referencedColumns: ['id'];
           },
           {
@@ -973,6 +983,7 @@ export type Database = {
         Row: {
           author_id: string;
           caption: string;
+          comment_count: number;
           created_at: string;
           duration_seconds: number;
           height: number;
@@ -980,12 +991,14 @@ export type Database = {
           like_count: number;
           poster_path: string;
           video_path: string;
+          view_count: number;
           width: number;
         };
         ComputedFields: never;
         Insert: {
           author_id?: string;
           caption?: string;
+          comment_count?: number;
           created_at?: string;
           duration_seconds: number;
           height: number;
@@ -993,11 +1006,13 @@ export type Database = {
           like_count?: number;
           poster_path: string;
           video_path: string;
+          view_count?: number;
           width: number;
         };
         Update: {
           author_id?: string;
           caption?: string;
+          comment_count?: number;
           created_at?: string;
           duration_seconds?: number;
           height?: number;
@@ -1005,6 +1020,7 @@ export type Database = {
           like_count?: number;
           poster_path?: string;
           video_path?: string;
+          view_count?: number;
           width?: number;
         };
         Relationships: [
@@ -1358,6 +1374,7 @@ export type Database = {
           id: string;
           like_count: number;
           photos: NonNullable<Json>;
+          reel_id: string | null;
           reply_count: number;
           reply_to_id: string | null;
         }[];
@@ -1378,6 +1395,7 @@ export type Database = {
         }[];
       };
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined };
+      record_reel_view: { Args: { p_guest_id?: string; p_reel_id: string }; Returns: undefined };
       request_test_drive: {
         Args: { p_listing_id: string; p_note?: string; p_proposed_times: string[] };
         Returns: string;

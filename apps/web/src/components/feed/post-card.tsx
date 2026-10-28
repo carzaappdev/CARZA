@@ -100,6 +100,14 @@ export function PostCard({
             <span className="truncate">{post.event.title}</span>
           </Link>
         ) : null}
+        {showReplyContext && post.reelId ? (
+          <Link
+            href={`/reels/${post.reelId}` as Route}
+            className="text-muted-foreground relative z-10 text-sm hover:underline"
+          >
+            Commented on a reel
+          </Link>
+        ) : null}
         {showReplyContext && post.replyToId ? (
           <Link
             href={`/p/${post.replyToId}` as Route}
