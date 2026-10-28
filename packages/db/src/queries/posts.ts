@@ -82,18 +82,9 @@ async function hydrate(client: TypedClient, rows: PostRow[], viewerId: string | 
 
 export type FeedPage = { posts: PostView[]; next: FeedCursor | null };
 
-function page(feed: FeedCursor['feed'], posts: PostView[], size: number): FeedPage {
-  const last = posts.at(-1);
-  return {
-    posts,
-    next:
-      posts.length === size && last ? { feed, before: last.createdAt, beforeId: last.id } : null,
-  };
-}
-
 /**
- * One page of a feed, newest first. "for-you" is every top-level post (one metro at launch, so recency
- * is the ranking); "following" is people the viewer follows plus their own posts.
+ * One page of a feed. "for-you" is every top-level post, ranked by engagement, freshness, distance and
+ * who you follow (see for_you_feed); "following" is people the viewer follows plus their own posts, newest first.
  */
 export async function getFeed(
   client: TypedClient,
@@ -111,26 +102,61 @@ export async function getFeed(
       })
       .select(POST_FIELDS);
     if (error) throw error;
-    return page('following', await hydrate(client, data, viewerId), size);
+    const posts = await hydrate(client, data, viewerId);
+    const last = posts.at(-1);
+    return {
+      posts,
+      next:
+        data.length === size && last
+          ? { feed: 'following', before: last.createdAt, beforeId: last.id }
+          : null,
+    };
   }
 
-  let query = client
+  const offset = cursor.offset ?? 0;
+  const { data, error } = await client
+    .rpc('for_you_feed', { p_offset: offset, p_limit: size })
+    .select(POST_FIELDS);
+  if (error) throw error;
+  const end = offset + size;
+  return {
+    posts: await hydrate(client, data, viewerId),
+    next:
+      data.length === size && end < 1000
+        ? { feed: 'for-you', before: null, beforeId: null, offset: end }
+        : null,
+  };
+}
+
+/** Posts with a #tag, newest first. */
+export async function getTagPosts(client: TypedClient, tag: string, viewerId: string | null) {
+  const { data, error } = await client
     .from('posts')
     .select(POST_FIELDS)
-    .is('reply_to_id', null)
-    .is('reel_id', null)
+    .contains('tags', [tag])
     .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .limit(size);
-  if (cursor.before && cursor.beforeId) {
-    // (created_at, id) < (before, beforeId), spelled out for PostgREST.
-    query = query.or(
-      `created_at.lt.${cursor.before},and(created_at.eq.${cursor.before},id.lt.${cursor.beforeId})`,
-    );
-  }
-  const { data, error } = await query;
+    .limit(50);
   if (error) throw error;
-  return page('for-you', await hydrate(client, data, viewerId), size);
+  return hydrate(client, data, viewerId);
+}
+
+/** The most used #tags lately. */
+export async function getTrendingTags(client: TypedClient, limit = 12) {
+  const { data, error } = await client.rpc('trending_tags', { p_days: 7, p_limit: limit });
+  if (error) throw error;
+  return data.map((t) => ({ tag: t.tag, postCount: Number(t.post_count) }));
+}
+
+/** People whose username or name contains the query. `query` must already be cleaned by peopleQuerySchema. */
+export async function searchPeople(client: TypedClient, query: string) {
+  const { data, error } = await client
+    .from('profiles')
+    .select('id, username, display_name, avatar_path, bio, city, region')
+    .or(`username.ilike.*${query.replace(/ /g, '')}*,display_name.ilike."*${query}*"`)
+    .order('username')
+    .limit(30);
+  if (error) throw error;
+  return data;
 }
 
 /** One post, or null. */

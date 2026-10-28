@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { SearchIcon } from 'lucide-react';
 import { getUnreadCount } from '@carza/db';
 import { CarzaLogo } from '@/components/brand/logo';
 import { NotificationBell } from '@/components/notifications/bell';
@@ -20,7 +21,17 @@ export async function Header() {
           <TabLinks variant="header" />
         </nav>
         <div className="col-start-3 flex items-center justify-end gap-1">
-          <ThemeToggle />
+          <Link
+            href="/explore"
+            aria-label="Search people and tags"
+            className="hover:bg-accent focus-visible:ring-ring/50 grid size-11 place-items-center rounded-full outline-none focus-visible:ring-[3px]"
+          >
+            <SearchIcon className="size-5" aria-hidden />
+          </Link>
+          {/* Phones have little room up here; the theme picker is also in Settings. */}
+          <span className="hidden sm:contents">
+            <ThemeToggle />
+          </span>
           {viewer ? (
             <>
               <NotificationBell initialCount={unread} />
