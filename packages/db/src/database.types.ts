@@ -446,6 +446,62 @@ export type Database = {
           },
         ];
       };
+      garage_cars: {
+        Row: {
+          created_at: string;
+          id: string;
+          make_id: number;
+          model_id: number;
+          nickname: string | null;
+          owner_id: string;
+          photo_path: string | null;
+          year: number;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          make_id: number;
+          model_id: number;
+          nickname?: string | null;
+          owner_id?: string;
+          photo_path?: string | null;
+          year: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          make_id?: number;
+          model_id?: number;
+          nickname?: string | null;
+          owner_id?: string;
+          photo_path?: string | null;
+          year?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'garage_cars_make_id_fkey';
+            columns: ['make_id'];
+            isOneToOne: false;
+            referencedRelation: 'vehicle_makes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'garage_cars_make_id_model_id_fkey';
+            columns: ['make_id', 'model_id'];
+            isOneToOne: false;
+            referencedRelation: 'vehicle_models';
+            referencedColumns: ['make_id', 'id'];
+          },
+          {
+            foreignKeyName: 'garage_cars_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       listing_photos: {
         Row: {
           created_at: string;
@@ -796,6 +852,7 @@ export type Database = {
       profile_private: {
         Row: {
           location: unknown;
+          onboarded_at: string | null;
           postal_code: string | null;
           updated_at: string;
           user_id: string;
@@ -803,12 +860,14 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           location?: unknown;
+          onboarded_at?: string | null;
           postal_code?: string | null;
           updated_at?: string;
           user_id: string;
         };
         Update: {
           location?: unknown;
+          onboarded_at?: string | null;
           postal_code?: string | null;
           updated_at?: string;
           user_id?: string;
@@ -830,6 +889,7 @@ export type Database = {
           city: string | null;
           created_at: string;
           display_name: string;
+          featured_at: string | null;
           id: string;
           region: string | null;
           role: Database['public']['Enums']['app_role'];
@@ -843,6 +903,7 @@ export type Database = {
           city?: string | null;
           created_at?: string;
           display_name: string;
+          featured_at?: string | null;
           id: string;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
@@ -855,6 +916,7 @@ export type Database = {
           city?: string | null;
           created_at?: string;
           display_name?: string;
+          featured_at?: string | null;
           id?: string;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
@@ -1266,6 +1328,7 @@ export type Database = {
         Returns: string;
       };
       cancel_test_drive: { Args: { p_note?: string; p_request_id: string }; Returns: undefined };
+      complete_onboarding: { Args: Record<PropertyKey, never>; Returns: undefined };
       complete_test_drive: { Args: { p_request_id: string }; Returns: undefined };
       create_dealership_invitation: {
         Args: {
@@ -1369,6 +1432,22 @@ export type Database = {
         Returns: undefined;
       };
       start_conversation: { Args: { p_body: string; p_listing_id: string }; Returns: string };
+      suggested_follows: {
+        Args: { p_limit?: number };
+        Returns: {
+          avatar_path: string;
+          bio: string;
+          city: string;
+          display_name: string;
+          featured: boolean;
+          follower_count: number;
+          id: string;
+          nearby: boolean;
+          region: string;
+          shared_makes: number;
+          username: string;
+        }[];
+      };
       upcoming_events: {
         Args: { p_lat?: number; p_limit?: number; p_lng?: number; p_radius_miles?: number };
         Returns: {
