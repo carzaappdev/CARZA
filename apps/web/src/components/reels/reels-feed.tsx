@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ClapperboardIcon, PlusIcon, Volume2Icon, VolumeXIcon } from 'lucide-react';
 import type { ReelsPage, ReelView } from '@carza/db';
 import { loadReelsPage } from '@/lib/actions/reels';
-import { ReelItem } from './reel-item';
+import { ReelItem, type ReelViewer } from './reel-item';
 
 /**
  * Full-height vertical swipe feed. Bandwidth matters on the free tier, so only the reel on screen and its
@@ -15,11 +15,11 @@ import { ReelItem } from './reel-item';
  */
 export function ReelsFeed({
   initial,
-  viewerId,
+  viewer,
   createHref,
 }: {
   initial: ReelsPage;
-  viewerId: string | null;
+  viewer: ReelViewer | null;
   createHref: Route;
 }) {
   const [reels, setReels] = useState<ReelView[]>(initial.reels);
@@ -104,10 +104,12 @@ export function ReelsFeed({
             <div key={reel.id} data-index={i} className="relative h-full snap-start snap-always">
               <ReelItem
                 reel={reel}
-                viewerId={viewerId}
+                viewer={viewer}
                 active={i === active}
                 // The neighbours get a <video> that buffers ahead; the rest are just posters.
                 mounted={Math.abs(i - active) <= 1}
+                // The next reel buffers fully so swiping to it starts instantly.
+                upNext={i === active + 1}
                 muted={muted}
                 onDeleted={() => remove(reel.id)}
               />

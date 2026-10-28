@@ -7,6 +7,7 @@ import { ReelsFeed } from '@/components/reels/reels-feed';
 import { getUser } from '@/lib/auth';
 import { publicStorageUrl } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/viewer';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -32,6 +33,7 @@ export default async function ReelPage({ params }: Props) {
   const reel = await loadReel((await params).id);
   if (!reel) notFound();
   const user = await getUser();
+  const viewer = await getViewer();
   const rest = await getReels(
     await createClient(),
     { before: reel.createdAt, beforeId: reel.id },
@@ -41,7 +43,7 @@ export default async function ReelPage({ params }: Props) {
     <ReelsFeed
       key={reel.id}
       initial={{ reels: [reel, ...rest.reels], next: rest.next }}
-      viewerId={user?.id ?? null}
+      viewer={viewer}
       createHref={
         (user ? '/reels/new' : `/sign-in?next=${encodeURIComponent('/reels/new')}`) as Route
       }

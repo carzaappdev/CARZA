@@ -99,3 +99,48 @@ describe('reel uploads', () => {
     ).not.toBeNull();
   });
 });
+
+describe('reel comments and views', () => {
+  it('count comments, keep them out of the feed, and count each viewer once', async () => {
+    const r = await createReel(alice);
+    const { error } = await bob.client.from('posts').insert({ body: 'Clean!', reel_id: r.id });
+    expect(error).toBeNull();
+    const { data: reel } = await anon()
+      .from('reels')
+      .select('comment_count')
+      .eq('id', r.id)
+      .single();
+    expect(reel?.comment_count).toBe(1);
+    const { data: feed } = await anon()
+      .from('posts')
+      .select('id')
+      .is('reply_to_id', null)
+      .is('reel_id', null)
+      .eq('author_id', bob.id);
+    expect(feed).toHaveLength(0);
+    // A comment can't also be a reply or an event post.
+    expect(
+      (await bob.client.from('posts').insert({ body: 'x', reel_id: r.id, reply_to_id: r.id }))
+        .error,
+    ).not.toBeNull();
+
+    await bob.client.rpc('record_reel_view', { p_reel_id: r.id });
+    await bob.client.rpc('record_reel_view', { p_reel_id: r.id });
+    const guest = randomUUID();
+    await anon().rpc('record_reel_view', { p_reel_id: r.id, p_guest_id: guest });
+    await anon().rpc('record_reel_view', { p_reel_id: r.id, p_guest_id: guest });
+    const { data: viewed } = await anon()
+      .from('reels')
+      .select('view_count')
+      .eq('id', r.id)
+      .single();
+    expect(viewed?.view_count).toBe(2);
+    // Counters are never client-set.
+    await alice.client
+      .from('reels')
+      .update({ view_count: 9999 } as never)
+      .eq('id', r.id);
+    const { data: still } = await anon().from('reels').select('view_count').eq('id', r.id).single();
+    expect(still?.view_count).toBe(2);
+  });
+});

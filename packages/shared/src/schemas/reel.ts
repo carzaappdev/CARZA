@@ -44,3 +44,6 @@ export function reelFileProblem(file: { type: string; size: number }, durationSe
   }
   return null;
 }
+
+/** Counting a reel view: guests pass the random id their browser keeps. */
+export const recordReelViewSchema = z.object({ reelId: z.guid(), guestId: z.guid().nullable() });

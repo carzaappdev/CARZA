@@ -3,7 +3,8 @@ import type { TypedClient } from '../index';
 import type { PostAuthor } from './posts';
 
 const REEL_FIELDS = `
-  id, video_path, poster_path, width, height, duration_seconds, caption, like_count, created_at,
+  id, video_path, poster_path, width, height, duration_seconds, caption, like_count, comment_count,
+  view_count, created_at,
   author:profiles!reels_author_id_fkey ( id, username, display_name, avatar_path )
 ` as const;
 
@@ -15,6 +16,8 @@ export type ReelView = {
   height: number;
   caption: string;
   likeCount: number;
+  commentCount: number;
+  viewCount: number;
   createdAt: string;
   author: PostAuthor;
   liked: boolean;
@@ -28,6 +31,8 @@ type ReelRow = {
   height: number;
   caption: string;
   like_count: number;
+  comment_count: number;
+  view_count: number;
   created_at: string;
   author: PostAuthor | null;
 };
@@ -57,6 +62,8 @@ async function hydrate(client: TypedClient, rows: ReelRow[], viewerId: string | 
             height: r.height,
             caption: r.caption,
             likeCount: r.like_count,
+            commentCount: r.comment_count,
+            viewCount: r.view_count,
             createdAt: r.created_at,
             author: r.author,
             liked: liked.has(r.id),

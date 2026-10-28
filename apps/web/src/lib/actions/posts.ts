@@ -23,7 +23,7 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
   const user = await getUser();
   if (!user) return fail('UNAUTHENTICATED', 'Sign in to post.');
 
-  const { body, photos, replyToId, eventId } = parsed.data;
+  const { body, photos, replyToId, eventId, reelId } = parsed.data;
   const supabase = await createClient();
 
   // Every photo must exist in the author's own folder (the database also checks the folder).
@@ -36,7 +36,7 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
 
   const { data, error } = await supabase
     .from('posts')
-    .insert({ body, photos, reply_to_id: replyToId, event_id: eventId })
+    .insert({ body, photos, reply_to_id: replyToId, event_id: eventId, reel_id: reelId })
     .select('id')
     .single();
   if (error) {
@@ -46,7 +46,7 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
     console.error('createPost failed', { code: error.code, userId: user.id });
     return fail('INTERNAL', 'Couldn’t post. Try again.');
   }
-  revalidatePath('/');
+  if (!reelId) revalidatePath('/');
   if (replyToId) revalidatePath(`/p/${replyToId}`);
   if (eventId) revalidatePath(`/events/${eventId}`);
   return ok({ id: data.id });
