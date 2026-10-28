@@ -805,6 +805,7 @@ export type Database = {
           author_id: string;
           body: string;
           created_at: string;
+          event_id: string | null;
           id: string;
           like_count: number;
           photos: NonNullable<Json>;
@@ -816,6 +817,7 @@ export type Database = {
           author_id?: string;
           body?: string;
           created_at?: string;
+          event_id?: string | null;
           id?: string;
           like_count?: number;
           photos?: NonNullable<Json>;
@@ -826,6 +828,7 @@ export type Database = {
           author_id?: string;
           body?: string;
           created_at?: string;
+          event_id?: string | null;
           id?: string;
           like_count?: number;
           photos?: NonNullable<Json>;
@@ -838,6 +841,13 @@ export type Database = {
             columns: ['author_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'posts_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
             referencedColumns: ['id'];
           },
           {
@@ -1344,6 +1354,7 @@ export type Database = {
           author_id: string;
           body: string;
           created_at: string;
+          event_id: string | null;
           id: string;
           like_count: number;
           photos: NonNullable<Json>;

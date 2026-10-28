@@ -4,7 +4,8 @@ import type { TypedClient } from '../index';
 
 const POST_FIELDS = `
   id, body, photos, like_count, reply_count, created_at, reply_to_id,
-  author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_path )
+  author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_path ),
+  event:events ( id, title )
 ` as const;
 
 const photosSchema = z.array(postPhotoSchema).catch([]);
@@ -25,6 +26,8 @@ export type PostView = {
   createdAt: string;
   replyToId: string | null;
   author: PostAuthor;
+  /** The event this post was shared to, if any (null when hidden from the viewer). */
+  event: { id: string; title: string } | null;
   liked: boolean;
 };
 
@@ -37,6 +40,7 @@ type PostRow = {
   created_at: string;
   reply_to_id: string | null;
   author: PostAuthor | null;
+  event: { id: string; title: string } | null;
 };
 
 /** Adds the viewer's likes and normalizes rows. Rows without an author (shouldn't happen) are dropped. */
@@ -64,6 +68,7 @@ async function hydrate(client: TypedClient, rows: PostRow[], viewerId: string | 
             createdAt: r.created_at,
             replyToId: r.reply_to_id,
             author: r.author,
+            event: r.event,
             liked: liked.has(r.id),
           },
         ]
@@ -128,6 +133,18 @@ export async function getPost(client: TypedClient, id: string, viewerId: string 
   const { data, error } = await client.from('posts').select(POST_FIELDS).eq('id', id).maybeSingle();
   if (error) throw error;
   return data ? ((await hydrate(client, [data], viewerId))[0] ?? null) : null;
+}
+
+/** An event's discussion and photos, newest first. */
+export async function getEventPosts(client: TypedClient, eventId: string, viewerId: string | null) {
+  const { data, error } = await client
+    .from('posts')
+    .select(POST_FIELDS)
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return hydrate(client, data, viewerId);
 }
 
 /** Replies to a post, oldest first (reads as a conversation). */

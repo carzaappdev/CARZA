@@ -26,9 +26,21 @@ export default async function EventsPage({
   const tab = params.tab === 'going' && viewer ? 'going' : 'upcoming';
   const supabase = await createClient();
 
+  // A ZIP in the link, then the last one picked, then the viewer's home ZIP.
   const zip =
     validZip(typeof params.zip === 'string' ? params.zip : undefined) ??
-    validZip((await cookies()).get(ZIP_COOKIE)?.value);
+    validZip((await cookies()).get(ZIP_COOKIE)?.value) ??
+    (viewer
+      ? validZip(
+          (
+            await supabase
+              .from('profile_private')
+              .select('postal_code')
+              .eq('user_id', viewer.id)
+              .maybeSingle()
+          ).data?.postal_code ?? undefined,
+        )
+      : undefined);
   const postal = zip ? await getPostalCode(supabase, zip) : null;
   const events =
     tab === 'going' && viewer

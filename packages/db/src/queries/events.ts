@@ -91,7 +91,33 @@ export async function getEvent(client: TypedClient, id: string, viewerId: string
     ...event,
     attendees: attendees.data.flatMap((r) => (r.user ? [r.user] : [])),
     viewerGoing: mine.data !== null,
+    friendsGoing: viewerId ? await getFriendsGoing(client, id, viewerId) : [],
   };
+}
+
+/** People the viewer follows who are going (up to 500 guests checked, which covers any meet). */
+async function getFriendsGoing(client: TypedClient, eventId: string, viewerId: string) {
+  const { data: guests, error } = await client
+    .from('event_rsvps')
+    .select('user_id')
+    .eq('event_id', eventId)
+    .neq('user_id', viewerId)
+    .limit(500);
+  if (error) throw error;
+  if (!guests.length) return [];
+  const { data, error: fErr } = await client
+    .from('follows')
+    .select(
+      'followee:profiles!follows_followee_id_fkey ( id, username, display_name, avatar_path )',
+    )
+    .eq('follower_id', viewerId)
+    .in(
+      'followee_id',
+      guests.map((g) => g.user_id),
+    )
+    .limit(20);
+  if (fErr) throw fErr;
+  return data.flatMap((f): PostAuthor[] => (f.followee ? [f.followee] : []));
 }
 
 export type EventDetail = NonNullable<Awaited<ReturnType<typeof getEvent>>>;

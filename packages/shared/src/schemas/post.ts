@@ -14,11 +14,13 @@ export const createPostSchema = z
     body: z.string().trim().max(LIMITS.postMaxLength, 'Posts can be up to 500 characters.'),
     photos: z.array(postPhotoSchema).max(LIMITS.postPhotosMax, 'Up to 4 photos per post.'),
     replyToId: z.guid().nullable(),
+    eventId: z.guid().nullable().default(null),
   })
   .refine((p) => p.body.length > 0 || p.photos.length > 0, {
     message: 'Write something or add a photo.',
     path: ['body'],
-  });
+  })
+  .refine((p) => !(p.eventId && p.replyToId), { message: 'Replies can’t belong to an event.' });
 export type CreatePostInput = z.infer<typeof createPostSchema>;
 
 export const postIdSchema = z.object({ postId: z.guid() });

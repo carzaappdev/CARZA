@@ -4,16 +4,23 @@ import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { ClockIcon, MapPinIcon, UsersIcon } from 'lucide-react';
 import { z } from 'zod';
-import { getEvent } from '@carza/db';
-import { eventHasEnded, formatCount, formatEventWhen } from '@carza/shared';
+import { getEvent, getEventPosts } from '@carza/db';
+import { eventHasEnded, formatCount, formatEventWhen, googleCalendarUrl } from '@carza/shared';
+import { AddToCalendar } from '@/components/events/add-to-calendar';
 import { DateBadge } from '@/components/events/event-card';
 import { EventCover } from '@/components/events/event-cover';
 import { HostMenu } from '@/components/events/host-menu';
 import { RsvpButton } from '@/components/events/rsvp-button';
+import { Composer } from '@/components/feed/composer';
+import { PostCard } from '@/components/feed/post-card';
 import { UserAvatar } from '@/components/feed/user-avatar';
+import { ShareButton } from '@/components/listings/share-button';
 import { SafetyMenu } from '@/components/safety/safety-menu';
+import { clientEnv } from '@/env/client';
 import { getUser } from '@/lib/auth';
+import { eventCalendarInfo } from '@/lib/event-calendar';
 import { createClient } from '@/lib/supabase/server';
+import { getViewer } from '@/lib/viewer';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -38,6 +45,11 @@ export default async function EventPage({ params }: Props) {
   if (!event) notFound();
 
   const user = await getUser();
+  const [viewer, posts] = await Promise.all([
+    getViewer(),
+    getEventPosts(await createClient(), event.id, user?.id ?? null),
+  ]);
+  const calendar = eventCalendarInfo(event, clientEnv.NEXT_PUBLIC_SITE_URL);
   const isHost = user?.id === event.host?.id;
   const ended = eventHasEnded(event);
   const cancelled = event.cancelled_at !== null;
@@ -106,6 +118,21 @@ export default async function EventPage({ params }: Props) {
                   {full ? 'full' : `${formatCount(event.capacity - event.going_count)} spots left`}
                 </span>
               ) : null}
+              {event.friendsGoing.length ? (
+                <span className="text-muted-foreground mt-1 flex items-center gap-2 text-sm">
+                  <span className="flex -space-x-2">
+                    {event.friendsGoing.slice(0, 3).map((f) => (
+                      <UserAvatar
+                        key={f.id}
+                        name={f.display_name}
+                        path={f.avatar_path}
+                        className="ring-background size-6 ring-2"
+                      />
+                    ))}
+                  </span>
+                  {friendsLine(event.friendsGoing.map((f) => f.display_name.split(' ')[0] ?? ''))}
+                </span>
+              ) : null}
             </span>
           </li>
         </ul>
@@ -127,6 +154,18 @@ export default async function EventPage({ params }: Props) {
                 full={full}
               />
             )}
+          </div>
+        ) : null}
+
+        {!cancelled ? (
+          <div className="flex gap-2">
+            {!ended ? (
+              <AddToCalendar
+                icsHref={`/events/${event.id}/ics`}
+                googleHref={googleCalendarUrl(calendar)}
+              />
+            ) : null}
+            <ShareButton title={event.title} className="h-11 flex-1 rounded-xl" />
           </div>
         ) : null}
 
@@ -196,6 +235,40 @@ export default async function EventPage({ params }: Props) {
           </section>
         ) : null}
       </div>
+
+      <section aria-labelledby="wall-heading" className="border-t">
+        <h2 id="wall-heading" className="font-display px-4 pt-5 pb-1 text-lg font-bold">
+          {ended ? 'Photos from the meet' : 'Discussion'}
+        </h2>
+        {viewer && !cancelled ? (
+          <Composer
+            viewer={viewer}
+            eventId={event.id}
+            placeholder={
+              ended ? 'Post your photos from the meet…' : 'Ask a question or hype it up…'
+            }
+          />
+        ) : null}
+        {posts.length ? (
+          posts.map((post) => (
+            <PostCard key={post.id} post={post} viewerId={viewer?.id ?? null} showEvent={false} />
+          ))
+        ) : (
+          <p className="text-muted-foreground px-4 pt-2 pb-8 text-[15px]">
+            {ended
+              ? 'Were you there? Share your shots.'
+              : 'No posts yet. Questions about parking or the route go here.'}
+          </p>
+        )}
+      </section>
     </div>
   );
+}
+
+/** "Priya is going", "Priya and Sam are going", "Priya, Sam and 3 others you follow are going". */
+function friendsLine(names: string[]) {
+  if (names.length === 1) return `${names[0]} is going`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are going`;
+  const others = names.length - 2;
+  return `${names[0]}, ${names[1]} and ${others} ${others === 1 ? 'other' : 'others'} you follow are going`;
 }
