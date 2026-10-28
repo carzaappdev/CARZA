@@ -812,6 +812,7 @@ export type Database = {
           reel_id: string | null;
           reply_count: number;
           reply_to_id: string | null;
+          tags: string[];
         };
         ComputedFields: never;
         Insert: {
@@ -825,6 +826,7 @@ export type Database = {
           reel_id?: string | null;
           reply_count?: number;
           reply_to_id?: string | null;
+          tags?: string[];
         };
         Update: {
           author_id?: string;
@@ -837,6 +839,7 @@ export type Database = {
           reel_id?: string | null;
           reply_count?: number;
           reply_to_id?: string | null;
+          tags?: string[];
         };
         Relationships: [
           {
@@ -1377,6 +1380,29 @@ export type Database = {
           reel_id: string | null;
           reply_count: number;
           reply_to_id: string | null;
+          tags: string[];
+        }[];
+        SetofOptions: {
+          from: '*';
+          to: 'posts';
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
+      for_you_feed: {
+        Args: { p_limit?: number; p_offset?: number };
+        Returns: {
+          author_id: string;
+          body: string;
+          created_at: string;
+          event_id: string | null;
+          id: string;
+          like_count: number;
+          photos: NonNullable<Json>;
+          reel_id: string | null;
+          reply_count: number;
+          reply_to_id: string | null;
+          tags: string[];
         }[];
         SetofOptions: {
           from: '*';
@@ -1475,6 +1501,13 @@ export type Database = {
           region: string;
           shared_makes: number;
           username: string;
+        }[];
+      };
+      trending_tags: {
+        Args: { p_days?: number; p_limit?: number };
+        Returns: {
+          post_count: number;
+          tag: string;
         }[];
       };
       upcoming_events: {

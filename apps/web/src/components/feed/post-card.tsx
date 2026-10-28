@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { PostActions } from './post-actions';
 import { PostMenu } from './post-menu';
 import { PostPhotos } from './post-photos';
+import { RichText } from './rich-text';
 import { UserAvatar } from './user-avatar';
 
 /**
@@ -123,7 +124,7 @@ export function PostCard({
               lg ? 'text-[17px] leading-6' : 'text-[15px] leading-[1.4]',
             )}
           >
-            {post.body}
+            <RichText text={post.body} />
           </p>
         ) : null}
         <PostPhotos photos={post.photos} priority={lg} />
