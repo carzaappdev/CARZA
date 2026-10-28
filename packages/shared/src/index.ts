@@ -19,6 +19,7 @@ export * from './schemas/reel';
 export * from './schemas/safety';
 export * from './schemas/moderation';
 export * from './logic/notifications';
+export * from './logic/garage';
 export * from './schemas/garage';
 export * from './logic/calendar';
 export * from './logic/rich-text';

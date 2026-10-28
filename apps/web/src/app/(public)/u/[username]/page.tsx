@@ -115,7 +115,9 @@ export default async function ProfilePage({ params, searchParams }: Props) {
               <Link href="/account/settings">Edit profile</Link>
             </Button>
             <Button asChild variant="outline" className="rounded-xl">
-              <Link href="/account/garage">{garage.length ? 'Edit garage' : 'Add your car'}</Link>
+              <Link href={garage.length ? '/account/garage' : '/account/garage/new'}>
+                {garage.length ? 'My Garage' : 'Add your car'}
+              </Link>
             </Button>
             <ShareButton
               title="Join me on Carza"
