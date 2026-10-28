@@ -48,7 +48,15 @@ export const NOTIFICATION_TYPES = [
   'dealership_rejected',
   'dealership_invite',
 ] as const;
-export const REPORT_TARGETS = ['listing', 'user', 'message', 'dealership'] as const;
+export const REPORT_TARGETS = [
+  'listing',
+  'user',
+  'message',
+  'dealership',
+  'post',
+  'reel',
+  'event',
+] as const;
 export const REPORT_REASONS = [
   'scam',
   'spam',

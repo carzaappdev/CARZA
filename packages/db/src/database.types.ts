@@ -3,6 +3,40 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export type Database = {
   public: {
     Tables: {
+      blocks: {
+        Row: {
+          blocked_id: string;
+          blocker_id: string;
+          created_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          blocked_id: string;
+          blocker_id?: string;
+          created_at?: string;
+        };
+        Update: {
+          blocked_id?: string;
+          blocker_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'blocks_blocked_id_fkey';
+            columns: ['blocked_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'blocks_blocker_id_fkey';
+            columns: ['blocker_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       conversation_participants: {
         Row: {
           archived_at: string | null;
@@ -1394,7 +1428,7 @@ export type Database = {
         | 'dealership_invite';
       report_reason: 'scam' | 'spam' | 'offensive' | 'misleading' | 'stolen' | 'other';
       report_status: 'open' | 'reviewing' | 'resolved' | 'dismissed';
-      report_target: 'listing' | 'user' | 'message' | 'dealership';
+      report_target: 'listing' | 'user' | 'message' | 'dealership' | 'post' | 'reel' | 'event';
       test_drive_status: 'requested' | 'confirmed' | 'declined' | 'cancelled' | 'completed';
       transmission: 'automatic' | 'manual' | 'cvt' | 'dct';
       verification_status: 'pending' | 'verified' | 'rejected' | 'suspended';
@@ -1540,7 +1574,7 @@ export const Constants = {
       ],
       report_reason: ['scam', 'spam', 'offensive', 'misleading', 'stolen', 'other'],
       report_status: ['open', 'reviewing', 'resolved', 'dismissed'],
-      report_target: ['listing', 'user', 'message', 'dealership'],
+      report_target: ['listing', 'user', 'message', 'dealership', 'post', 'reel', 'event'],
       test_drive_status: ['requested', 'confirmed', 'declined', 'cancelled', 'completed'],
       transmission: ['automatic', 'manual', 'cvt', 'dct'],
       verification_status: ['pending', 'verified', 'rejected', 'suspended'],

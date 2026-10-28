@@ -80,7 +80,12 @@ export function PostCard({
               {formatRelativeTime(post.createdAt)}
             </time>
           </div>
-          <PostMenu postId={post.id} isOwn={post.author.id === viewerId} onDeleted={onDeleted} />
+          <PostMenu
+            postId={post.id}
+            author={post.author}
+            viewerId={viewerId}
+            onDeleted={onDeleted}
+          />
         </div>
         {showReplyContext && post.replyToId ? (
           <Link

@@ -171,10 +171,11 @@ export async function getProfile(client: TypedClient, username: string, viewerId
 
   const count = (column: 'follower_id' | 'followee_id') =>
     client.from('follows').select('*', { count: 'exact', head: true }).eq(column, profile.id);
-  const [followers, following, viewerFollows] = await Promise.all([
+  const isOther = viewerId !== null && viewerId !== profile.id;
+  const [followers, following, viewerFollows, viewerBlocked] = await Promise.all([
     count('followee_id'),
     count('follower_id'),
-    viewerId && viewerId !== profile.id
+    isOther
       ? client
           .from('follows')
           .select('followee_id')
@@ -182,15 +183,25 @@ export async function getProfile(client: TypedClient, username: string, viewerId
           .eq('followee_id', profile.id)
           .maybeSingle()
       : Promise.resolve({ data: null, error: null }),
+    isOther
+      ? client
+          .from('blocks')
+          .select('blocked_id')
+          .eq('blocker_id', viewerId)
+          .eq('blocked_id', profile.id)
+          .maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
   ]);
   if (followers.error) throw followers.error;
   if (following.error) throw following.error;
   if (viewerFollows.error) throw viewerFollows.error;
+  if (viewerBlocked.error) throw viewerBlocked.error;
   return {
     ...profile,
     followerCount: followers.count ?? 0,
     followingCount: following.count ?? 0,
     viewerFollows: viewerFollows.data !== null,
+    viewerBlocked: viewerBlocked.data !== null,
   };
 }
 

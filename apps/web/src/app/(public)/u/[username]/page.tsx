@@ -7,6 +7,8 @@ import { getProfile, getProfilePosts } from '@carza/db';
 import { formatCount } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { FollowButton } from '@/components/feed/follow-button';
+import { SafetyMenu } from '@/components/safety/safety-menu';
+import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { Button } from '@/components/ui/button';
@@ -56,7 +58,18 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             </h1>
             <p className="text-muted-foreground truncate">@{profile.username}</p>
           </div>
-          <UserAvatar name={profile.display_name} path={profile.avatar_path} large />
+          <div className="flex items-start gap-1">
+            <UserAvatar name={profile.display_name} path={profile.avatar_path} large />
+            {profile.viewerBlocked ? null : (
+              <SafetyMenu
+                targetType="user"
+                targetId={profile.id}
+                owner={profile}
+                viewerId={viewerId}
+                className="-mr-2"
+              />
+            )}
+          </div>
         </div>
         {profile.bio ? (
           <p className="text-[15px] leading-[1.4] whitespace-pre-wrap">{profile.bio}</p>
@@ -82,6 +95,8 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <Button asChild variant="outline" className="w-full rounded-xl">
             <Link href="/account/settings">Edit profile</Link>
           </Button>
+        ) : profile.viewerBlocked ? (
+          <UnblockButton userId={profile.id} username={profile.username} />
         ) : (
           <FollowButton
             userId={profile.id}

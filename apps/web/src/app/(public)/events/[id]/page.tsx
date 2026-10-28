@@ -11,6 +11,7 @@ import { EventCover } from '@/components/events/event-cover';
 import { HostMenu } from '@/components/events/host-menu';
 import { RsvpButton } from '@/components/events/rsvp-button';
 import { UserAvatar } from '@/components/feed/user-avatar';
+import { SafetyMenu } from '@/components/safety/safety-menu';
 import { getUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -130,22 +131,30 @@ export default async function EventPage({ params }: Props) {
         ) : null}
 
         {event.host ? (
-          <Link
-            href={`/u/${event.host.username}` as Route}
-            className="hover:bg-accent/60 focus-visible:ring-ring/50 -mx-2 flex items-center gap-3 rounded-xl p-2 outline-none focus-visible:ring-[3px]"
-          >
-            <UserAvatar
-              name={event.host.display_name}
-              path={event.host.avatar_path}
-              className="size-11"
-            />
-            <span className="min-w-0">
-              <span className="text-muted-foreground block text-xs font-medium tracking-wide uppercase">
-                Hosted by
+          <div className="-mx-2 flex items-center gap-1">
+            <Link
+              href={`/u/${event.host.username}` as Route}
+              className="hover:bg-accent/60 focus-visible:ring-ring/50 flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 outline-none focus-visible:ring-[3px]"
+            >
+              <UserAvatar
+                name={event.host.display_name}
+                path={event.host.avatar_path}
+                className="size-11"
+              />
+              <span className="min-w-0">
+                <span className="text-muted-foreground block text-xs font-medium tracking-wide uppercase">
+                  Hosted by
+                </span>
+                <span className="block truncate font-semibold">{event.host.display_name}</span>
               </span>
-              <span className="block truncate font-semibold">{event.host.display_name}</span>
-            </span>
-          </Link>
+            </Link>
+            <SafetyMenu
+              targetType="event"
+              targetId={event.id}
+              owner={event.host}
+              viewerId={user?.id ?? null}
+            />
+          </div>
         ) : null}
 
         {event.description ? (
