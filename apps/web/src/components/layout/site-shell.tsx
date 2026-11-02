@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { InstallPrompt } from '@/components/pwa/install-prompt';
 import { Header } from './header';
 import { MobileTabBar } from './mobile-tab-bar';
 
@@ -17,6 +18,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         {children}
       </main>
       <MobileTabBar />
+      <InstallPrompt />
     </div>
   );
 }

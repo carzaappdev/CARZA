@@ -16,6 +16,7 @@ import { describeNotification, formatRelativeTime } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { MarkNotificationsRead } from '@/components/notifications/mark-read';
+import { PushPrompt } from '@/components/pwa/push-prompt';
 import { requireUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
@@ -48,6 +49,7 @@ export default async function NotificationsPage() {
       <h1 className="font-display border-b px-4 py-4 text-xl font-bold tracking-tight">
         Notifications
       </h1>
+      <PushPrompt />
       {hasUnread ? <MarkNotificationsRead /> : null}
       {items.length ? (
         <ul>

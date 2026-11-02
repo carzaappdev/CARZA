@@ -37,7 +37,17 @@ const nextConfig: NextConfig = {
         ]
       : [],
   },
-  headers: async () => [{ source: '/:path*', headers: securityHeaders }],
+  headers: async () => [
+    { source: '/:path*', headers: securityHeaders },
+    // Browsers must always pick up a new service worker straight away.
+    {
+      source: '/sw.js',
+      headers: [
+        { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+        { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+      ],
+    },
+  ],
   poweredByHeader: false,
   typedRoutes: true,
   // Internal packages ship TypeScript source; Next compiles them.

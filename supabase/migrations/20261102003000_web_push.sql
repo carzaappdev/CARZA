@@ -1,0 +1,124 @@
+-- Web push: the devices each user turned alerts on for, which kinds they muted, and a hook that asks
+-- the app to deliver a push whenever a notification row is created.
+--
+-- Delivery: an AFTER INSERT trigger on notifications posts {notification_id} to the app's dispatch
+-- route with pg_net (async, so it never slows down or fails the insert). The route renders the text
+-- with the same shared code as the in-app list and sends it with VAPID. The URL and shared secret
+-- live in Vault ('push_dispatch_url', 'push_dispatch_secret'); with either missing nothing is sent,
+-- which is the default for local stacks and CI.
+
+create extension if not exists pg_net with schema extensions;
+
+-- ---------------------------------------------------------------------------
+-- push_subscriptions: one row per browser/device. Written only through save_push_subscription.
+-- ---------------------------------------------------------------------------
+create table public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  -- The push service URL. Unguessable and only known to the browser that created it.
+  endpoint text not null unique check (endpoint ~ '^https://' and char_length(endpoint) <= 1000),
+  p256dh text not null check (p256dh ~ '^[A-Za-z0-9_-]{80,100}={0,2}$'),
+  auth text not null check (auth ~ '^[A-Za-z0-9_-]{16,32}={0,2}$'),
+  created_at timestamptz not null default now()
+);
+
+create index push_subscriptions_user_idx on public.push_subscriptions (user_id, created_at desc);
+
+alter table public.push_subscriptions enable row level security;
+
+revoke all on public.push_subscriptions from anon, authenticated;
+grant select, delete on public.push_subscriptions to authenticated;
+
+create policy "Users see their own devices" on public.push_subscriptions
+  for select to authenticated using (user_id = (select auth.uid()));
+
+create policy "Users remove their own devices" on public.push_subscriptions
+  for delete to authenticated using (user_id = (select auth.uid()));
+
+-- Saves this browser's subscription for the signed-in user. A browser has one endpoint, so when
+-- someone else signs in on the same device the row moves to them. Keeps each user's 10 newest devices.
+create function public.save_push_subscription(p_endpoint text, p_p256dh text, p_auth text)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_user uuid := (select auth.uid());
+begin
+  if v_user is null then
+    raise exception 'not signed in' using errcode = '42501';
+  end if;
+
+  insert into public.push_subscriptions (user_id, endpoint, p256dh, auth)
+  values (v_user, p_endpoint, p_p256dh, p_auth)
+  on conflict (endpoint) do update
+    set user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth, created_at = now();
+
+  delete from public.push_subscriptions
+  where user_id = v_user
+    and id not in (
+      select id from public.push_subscriptions where user_id = v_user order by created_at desc limit 10
+    );
+end;
+$$;
+
+revoke all on function public.save_push_subscription(text, text, text) from public, anon;
+grant execute on function public.save_push_subscription(text, text, text) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Muted kinds: notification types the user still sees in the app but doesn't want pushed.
+-- ---------------------------------------------------------------------------
+alter table public.profile_private
+  add column push_muted public.notification_type[] not null default '{}'
+    check (cardinality(push_muted) <= 32);
+
+grant update (push_muted) on public.profile_private to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Dispatch hook
+-- ---------------------------------------------------------------------------
+create function private.dispatch_push()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_url text;
+  v_secret text;
+begin
+  if not exists (select 1 from public.push_subscriptions s where s.user_id = new.user_id) then
+    return null;
+  end if;
+  if exists (
+    select 1 from public.profile_private p where p.user_id = new.user_id and new.type = any (p.push_muted)
+  ) then
+    return null;
+  end if;
+
+  select decrypted_secret into v_url from vault.decrypted_secrets where name = 'push_dispatch_url';
+  select decrypted_secret into v_secret from vault.decrypted_secrets where name = 'push_dispatch_secret';
+  if v_url is null or v_secret is null then
+    return null;
+  end if;
+
+  perform net.http_post(
+    url := v_url,
+    body := jsonb_build_object('notification_id', new.id),
+    headers := jsonb_build_object('Content-Type', 'application/json', 'Authorization', 'Bearer ' || v_secret),
+    timeout_milliseconds := 5000
+  );
+  return null;
+exception when others then
+  -- A push is a nice-to-have; never lose the in-app notification over it.
+  raise warning 'dispatch_push failed: %', sqlerrm;
+  return null;
+end;
+$$;
+
+revoke all on function private.dispatch_push() from public, anon, authenticated;
+
+create trigger notifications_dispatch_push
+  after insert on public.notifications
+  for each row execute function private.dispatch_push();

@@ -878,6 +878,7 @@ export type Database = {
           location: unknown;
           onboarded_at: string | null;
           postal_code: string | null;
+          push_muted: Database['public']['Enums']['notification_type'][];
           updated_at: string;
           user_id: string;
         };
@@ -887,6 +888,7 @@ export type Database = {
           location?: unknown;
           onboarded_at?: string | null;
           postal_code?: string | null;
+          push_muted?: Database['public']['Enums']['notification_type'][];
           updated_at?: string;
           user_id: string;
         };
@@ -895,6 +897,7 @@ export type Database = {
           location?: unknown;
           onboarded_at?: string | null;
           postal_code?: string | null;
+          push_muted?: Database['public']['Enums']['notification_type'][];
           updated_at?: string;
           user_id?: string;
         };
@@ -960,6 +963,42 @@ export type Database = {
           username?: string;
         };
         Relationships: [];
+      };
+      push_subscriptions: {
+        Row: {
+          auth: string;
+          created_at: string;
+          endpoint: string;
+          id: string;
+          p256dh: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          auth: string;
+          created_at?: string;
+          endpoint: string;
+          id?: string;
+          p256dh: string;
+          user_id: string;
+        };
+        Update: {
+          auth?: string;
+          created_at?: string;
+          endpoint?: string;
+          id?: string;
+          p256dh?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'push_subscriptions_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       reel_likes: {
         Row: {
@@ -1447,6 +1486,10 @@ export type Database = {
       };
       respond_test_drive: {
         Args: { p_confirm: boolean; p_note?: string; p_request_id: string; p_time?: string };
+        Returns: undefined;
+      };
+      save_push_subscription: {
+        Args: { p_auth: string; p_endpoint: string; p_p256dh: string };
         Returns: undefined;
       };
       search_listings: {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { LogOutIcon, SettingsIcon, UserIcon } from 'lucide-react';
 import { signOut } from '@/app/auth/actions';
 import { UserAvatar } from '@/components/feed/user-avatar';
+import { currentSubscription } from '@/lib/push-client';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -48,7 +49,11 @@ export function AccountMenu({ viewer }: { viewer: Viewer }) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <form action={signOut}>
+        {/* Signing out stops this device's alerts, so a shared phone doesn't keep getting yours. */}
+        <form
+          action={signOut}
+          onSubmit={() => void currentSubscription().then((sub) => sub?.unsubscribe())}
+        >
           <DropdownMenuItem asChild>
             <button type="submit" className="w-full">
               <LogOutIcon /> Sign out
