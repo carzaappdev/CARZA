@@ -8,13 +8,17 @@ async function signIn(page: Page, email: string) {
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await page.waitForURL((url) => url.pathname === '/' || url.pathname === '/welcome');
+  // Wait for content, not the URL: the client lands on / before the server redirects to /welcome.
+  const composer = page.getByLabel('New post');
+  const skip = page.getByRole('button', { name: 'Skip for now' });
+  await expect(composer.or(skip)).toBeVisible();
   // Seed accounts haven't done first-run setup yet; skip through it the first time.
-  if (new URL(page.url()).pathname === '/welcome') {
-    await page.getByRole('button', { name: 'Skip for now' }).click();
-    await page.getByRole('button', { name: 'Skip for now' }).click();
+  if (await skip.isVisible()) {
+    await skip.click();
+    await expect(page.getByRole('heading', { name: 'What do you drive?' })).toBeVisible();
+    await skip.click();
     await page.getByRole('button', { name: 'Start exploring' }).click();
-    await page.waitForURL((url) => url.pathname === '/');
+    await expect(composer).toBeVisible();
   }
 }
 
@@ -48,7 +52,7 @@ test('signed-out visitors are sent to sign in', async ({ page }) => {
 test('a member can sign in and post to the feed', async ({ page }) => {
   await signIn(page, 'buyer1@carza.test');
   const body = `Smoke test post ${Date.now()}`;
-  await page.getByPlaceholder('What’s new in your garage?').fill(body);
+  await page.getByLabel('New post').fill(body);
   await page.getByRole('button', { name: 'Post', exact: true }).click();
   await expect(page.getByText(body)).toBeVisible();
 });
