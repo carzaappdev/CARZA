@@ -4,6 +4,7 @@ import {
   groupEventsByDay,
   isoToZonedInput,
   timeZoneAbbr,
+  timeZoneLabel,
   zonedInputToIso,
 } from './event-time';
 
@@ -61,5 +62,17 @@ describe('day sections', () => {
       ['Tomorrow', 2],
       ['Saturday', 1],
     ]);
+  });
+});
+
+describe('timeZoneLabel', () => {
+  it('names the city for regional zones', () => {
+    expect(timeZoneLabel('America/New_York', new Date('2026-01-15T12:00:00Z'))).toBe(
+      'EST (America/New York)',
+    );
+  });
+  it('does not repeat itself for UTC', () => {
+    expect(timeZoneLabel('UTC')).toBe('UTC');
+    expect(timeZoneLabel('Etc/UTC')).not.toContain('Etc/UTC');
   });
 });

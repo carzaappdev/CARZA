@@ -67,6 +67,13 @@ export function timeZoneAbbr(timeZone: string, at = new Date()) {
   );
 }
 
+/** "CST (America/Chicago)" for a form hint; just "UTC" when the zone has no separate city name. */
+export function timeZoneLabel(timeZone: string, at = new Date()) {
+  const abbr = timeZoneAbbr(timeZone, at);
+  const regional = timeZone.includes('/') && !timeZone.startsWith('Etc/');
+  return regional ? `${abbr} (${timeZone.replace(/_/g, ' ')})` : abbr;
+}
+
 /** Days since the epoch for the calendar date of `ms` in `timeZone`. */
 function dayNumber(ms: number, timeZone: string) {
   const w = wallClock(ms, timeZone);

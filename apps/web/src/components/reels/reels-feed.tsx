@@ -138,7 +138,7 @@ export function ReelsFeed({
   );
 
   return (
-    <div className="relative mx-auto h-[calc(100dvh-7rem-env(safe-area-inset-bottom))] w-full bg-black md:h-[calc(100dvh-4rem)] md:max-w-[480px]">
+    <div className="relative mx-auto h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom))] w-full bg-black md:h-[calc(100dvh-4rem)] md:max-w-[480px]">
       {reels.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center text-white">
           <span className="grid size-16 place-items-center rounded-2xl bg-white/10">
@@ -244,7 +244,7 @@ export function ReelsFeed({
         </div>
       ) : null}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent p-3">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <h1 className="font-display px-1 text-lg font-bold text-white drop-shadow">Reels</h1>
         <div className="pointer-events-auto flex gap-2">
           {reels.length > 0 ? (
