@@ -8,9 +8,10 @@ import {
   type ActionResult,
 } from '@carza/shared';
 import { getUser } from '@/lib/auth';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 
-/** Buckets where a user's files live under `{user_id}/`. Each has an owner-delete policy. */
+/** Buckets where a user's files live under `{user_id}/`. */
 const USER_BUCKETS = ['avatars', 'post-photos', 'reels'] as const;
 
 /** Permanently deletes the signed-in user's account, files and everything they posted. */
@@ -32,25 +33,30 @@ export async function deleteAccount(input: unknown): Promise<ActionResult<never>
     });
   }
 
-  // Files first, while the session can still prove they're the owner's.
+  // The account goes first, so a failure here never leaves someone with their photos gone but their
+  // account still there.
+  const { error } = await supabase.rpc('delete_my_account');
+  if (error) {
+    console.error('deleteAccount failed', { code: error.code, userId: user.id });
+    return fail('INTERNAL', 'Couldn’t delete your account. Try again.');
+  }
+
+  // Then their files. The user no longer exists to prove ownership, so this needs the secret key.
+  const admin = createAdminClient();
+  if (!admin) console.error('deleteAccount: no secret key, files left behind', { userId: user.id });
   for (const bucket of USER_BUCKETS) {
-    const store = supabase.storage.from(bucket);
+    if (!admin) break;
+    const store = admin.storage.from(bucket);
     // Bounded: at most 5,000 files per bucket, so a stuck listing can't spin forever.
     for (let page = 0; page < 50; page++) {
-      const { data: files, error } = await store.list(user.id, { limit: 100 });
-      if (error || !files.length) break;
+      const { data: files, error: listError } = await store.list(user.id, { limit: 100 });
+      if (listError || !files.length) break;
       const { error: removeError } = await store.remove(files.map((f) => `${user.id}/${f.name}`));
       if (removeError) {
         console.error('deleteAccount: file cleanup failed', { bucket, userId: user.id });
         break;
       }
     }
-  }
-
-  const { error } = await supabase.rpc('delete_my_account');
-  if (error) {
-    console.error('deleteAccount failed', { code: error.code, userId: user.id });
-    return fail('INTERNAL', 'Couldn’t delete your account. Try again.');
   }
   await supabase.auth.signOut({ scope: 'local' });
   redirect('/');
