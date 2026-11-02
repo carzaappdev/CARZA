@@ -1,5 +1,6 @@
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { ClockIcon, MapPinIcon, UsersIcon } from 'lucide-react';
@@ -184,7 +185,10 @@ export default async function EventPage({ params }: Props) {
                 <span className="text-muted-foreground block text-xs font-medium tracking-wide uppercase">
                   Hosted by
                 </span>
-                <span className="block truncate font-semibold">{event.host.display_name}</span>
+                <span className="flex items-center gap-1 font-semibold">
+                  <span className="truncate">{event.host.display_name}</span>
+                  <OfficialBadge official={event.host.official} />
+                </span>
               </span>
             </Link>
             <SafetyMenu

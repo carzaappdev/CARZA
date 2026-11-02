@@ -4,7 +4,7 @@ import type { PostAuthor } from './posts';
 const EVENT_FIELDS = `
   id, title, description, starts_at, ends_at, timezone, venue_name, address, postal_code, city, region,
   cover_path, capacity, going_count, cancelled_at, created_at,
-  host:profiles!events_host_id_fkey ( id, username, display_name, avatar_path )
+  host:profiles!events_host_id_fkey ( id, username, display_name, avatar_path, official )
 ` as const;
 
 export type EventSummary = Pick<
@@ -72,7 +72,9 @@ export async function getEvent(client: TypedClient, id: string, viewerId: string
   const [attendees, mine] = await Promise.all([
     client
       .from('event_rsvps')
-      .select('user:profiles!event_rsvps_user_id_fkey ( id, username, display_name, avatar_path )')
+      .select(
+        'user:profiles!event_rsvps_user_id_fkey ( id, username, display_name, avatar_path, official )',
+      )
       .eq('event_id', id)
       .order('created_at', { ascending: true })
       .limit(24),
@@ -108,7 +110,7 @@ async function getFriendsGoing(client: TypedClient, eventId: string, viewerId: s
   const { data, error: fErr } = await client
     .from('follows')
     .select(
-      'followee:profiles!follows_followee_id_fkey ( id, username, display_name, avatar_path )',
+      'followee:profiles!follows_followee_id_fkey ( id, username, display_name, avatar_path, official )',
     )
     .eq('follower_id', viewerId)
     .in(

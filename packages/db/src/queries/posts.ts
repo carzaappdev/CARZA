@@ -4,7 +4,7 @@ import type { TypedClient } from '../index';
 
 const POST_FIELDS = `
   id, body, photos, like_count, reply_count, created_at, reply_to_id, reel_id,
-  author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_path ),
+  author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_path, official ),
   event:events ( id, title )
 ` as const;
 
@@ -15,6 +15,7 @@ export type PostAuthor = {
   username: string;
   display_name: string;
   avatar_path: string | null;
+  official: boolean;
 };
 
 export type PostView = {
@@ -231,7 +232,7 @@ export async function getProfile(client: TypedClient, username: string, viewerId
   const { data: profile, error } = await client
     .from('profiles')
     .select(
-      'id, username, display_name, avatar_path, bio, city, region, created_at, founding_number, featured_at',
+      'id, username, display_name, avatar_path, bio, city, region, created_at, founding_number, featured_at, official',
     )
     .eq('username', username)
     .maybeSingle();

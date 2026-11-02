@@ -1,5 +1,6 @@
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { MessagesSquareIcon } from 'lucide-react';
@@ -63,8 +64,9 @@ export default async function ProfilePage({ params, searchParams }: Props) {
       <header className="flex flex-col gap-4 px-4 pt-6 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display truncate text-2xl font-bold tracking-tight">
-              {profile.display_name}
+            <h1 className="font-display flex items-center gap-1.5 text-2xl font-bold tracking-tight">
+              <span className="truncate">{profile.display_name}</span>
+              <OfficialBadge official={profile.official} className="size-6" />
             </h1>
             <p className="text-muted-foreground truncate">@{profile.username}</p>
           </div>

@@ -5,7 +5,7 @@ import type { PostAuthor } from './posts';
 const REEL_FIELDS = `
   id, video_path, poster_path, width, height, duration_seconds, caption, like_count, comment_count,
   view_count, created_at,
-  author:profiles!reels_author_id_fkey ( id, username, display_name, avatar_path )
+  author:profiles!reels_author_id_fkey ( id, username, display_name, avatar_path, official )
 ` as const;
 
 export type ReelView = {

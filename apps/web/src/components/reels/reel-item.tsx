@@ -2,6 +2,7 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { useRouter } from 'next/navigation';
 import { useEffect, useOptimistic, useRef, useState, useTransition } from 'react';
 import {
@@ -218,6 +219,7 @@ export function ReelItem({
               className="size-8 ring-2 ring-white/80"
             />
             <span className="truncate font-semibold drop-shadow">{reel.author.display_name}</span>
+            <OfficialBadge official={reel.author.official} className="text-white drop-shadow" />
           </Link>
           {reel.caption ? (
             <p className="mt-2 line-clamp-3 text-[15px] leading-snug break-words whitespace-pre-wrap drop-shadow">
