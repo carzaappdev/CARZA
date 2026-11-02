@@ -39,3 +39,9 @@ export function normalizeTag(input: string) {
   const tag = input.trim().replace(/^#/, '').toLowerCase();
   return /^[a-z][a-z0-9_]{1,29}$/.test(tag) ? tag : null;
 }
+
+/** The "@ab" being typed right before the caret (same start rule as mentions), or null. */
+export function mentionAtCaret(text: string, caret: number) {
+  const query = /(^|[^A-Za-z0-9_])@([A-Za-z0-9_]{1,30})$/.exec(text.slice(0, caret))?.[2];
+  return query ? { start: caret - query.length - 1, end: caret, query } : null;
+}

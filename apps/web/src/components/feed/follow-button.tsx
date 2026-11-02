@@ -12,11 +12,16 @@ export function FollowButton({
   userId,
   following,
   signedIn,
+  followsYou = false,
+  size,
   className,
 }: {
   userId: string;
   following: boolean;
   signedIn: boolean;
+  /** They follow the viewer, so the button offers to "Follow back". */
+  followsYou?: boolean;
+  size?: 'sm' | 'default';
   className?: string;
 }) {
   const pathname = usePathname();
@@ -26,7 +31,7 @@ export function FollowButton({
 
   if (!signedIn) {
     return (
-      <Button asChild className={className}>
+      <Button asChild size={size} className={className}>
         <Link href={`/sign-in?next=${encodeURIComponent(pathname)}` as Route}>Follow</Link>
       </Button>
     );
@@ -35,6 +40,7 @@ export function FollowButton({
     <Button
       type="button"
       variant={optimistic ? 'outline' : 'default'}
+      size={size}
       className={className}
       aria-pressed={optimistic}
       onClick={() =>
@@ -50,7 +56,7 @@ export function FollowButton({
         })
       }
     >
-      {optimistic ? 'Following' : 'Follow'}
+      {optimistic ? 'Following' : followsYou ? 'Follow back' : 'Follow'}
     </Button>
   );
 }

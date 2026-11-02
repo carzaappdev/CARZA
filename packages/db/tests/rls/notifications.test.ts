@@ -71,6 +71,18 @@ describe('social notifications', () => {
     expect(rsvps).toHaveLength(1);
     expect(rsvps[0]?.data.actor_id).toBe(bob.id);
 
+    // Moving it tells guests once (a second edit replaces the first notice); a title edit does not.
+    await alice.client.from('events').update({ title: 'Night cruise!' }).eq('id', event!.id);
+    expect(await mine(bob, 'event_updated')).toHaveLength(0);
+    for (const days of [4, 5]) {
+      await alice.client
+        .from('events')
+        .update({ starts_at: new Date(Date.now() + days * 86_400_000).toISOString() })
+        .eq('id', event!.id);
+    }
+    expect(await mine(bob, 'event_updated')).toHaveLength(1);
+    expect(await mine(alice, 'event_updated')).toHaveLength(0);
+
     // Cancelling tells guests, not the host.
     await alice.client
       .from('events')

@@ -14,7 +14,12 @@ export async function GET(request: NextRequest) {
     if (!error) return NextResponse.redirect(new URL(next, request.url));
   }
   // Provider errors (e.g. the user cancelled) and bad codes all land here, with fixed copy only.
+  // Email links opened in another browser can't finish here (no PKCE verifier), but Supabase has
+  // already confirmed the address by then, so tell people to sign in instead of blaming a provider.
+  const from = searchParams.get('from');
+  const error =
+    from === 'signup' ? 'email_confirmed' : from === 'recovery' ? 'link_invalid' : 'oauth_failed';
   return NextResponse.redirect(
-    new URL(`/sign-in?error=oauth_failed&next=${encodeURIComponent(next)}`, request.url),
+    new URL(`/sign-in?error=${error}&next=${encodeURIComponent(next)}`, request.url),
   );
 }

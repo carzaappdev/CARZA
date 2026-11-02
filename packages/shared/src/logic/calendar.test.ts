@@ -18,7 +18,7 @@ describe('eventToIcs', () => {
     expect(ics).toContain('DTEND:20261101T170000Z');
   });
   it('escapes text and uses CRLF line endings', () => {
-    expect(ics).toContain('SUMMARY:Cars\\, Coffee\; & Donuts');
+    expect(ics).toContain('SUMMARY:Cars\\, Coffee\\; & Donuts');
     expect(ics).toContain('Bring the car.\\nAll makes welcome.');
     expect(ics.split('\r\n').every((l) => new TextEncoder().encode(l).length <= 75)).toBe(true);
   });
