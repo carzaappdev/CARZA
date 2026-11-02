@@ -38,6 +38,10 @@ Launch strategy: **one metro first, then national (one country).** Never hardcod
    - Validate ALL input at the boundary with Zod (from `packages/shared`).
    - Never read, print, or commit `.env*` files or secrets. Use `.env.example` for variable names.
 2. **Database changes only through migration files** in `supabase/migrations/`. Never change schema through the dashboard or MCP. After a migration, regenerate types into `packages/db`.
+   **Migrations go live before the code that needs them.** Merging to `main` deploys production, so a PR
+   that adds a migration merges only after that migration is applied to the production database (with
+   the owner's OK). Write migrations so the currently deployed code still works after they run (add
+   before you drop; drop in a later PR).
 3. **Mobile-ready:** business logic and validation live in `packages/shared`, not inside React components.
 4. **TypeScript strict.** No `any`, no `@ts-ignore` without a comment explaining why.
 5. **Small, focused changes.** One feature or fix per branch/PR. Branch names: `feat/...`, `fix/...`, `chore/...`. Conventional commits.
