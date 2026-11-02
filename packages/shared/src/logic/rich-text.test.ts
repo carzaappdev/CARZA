@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractTags, normalizeTag, splitRichText } from './rich-text';
+import { extractTags, mentionAtCaret, normalizeTag, splitRichText } from './rich-text';
 
 describe('splitRichText', () => {
   it('finds mentions and tags but not emails or mid-word symbols', () => {
@@ -26,5 +26,20 @@ describe('tags', () => {
     expect(extractTags('#WRX day. #wrx #sti')).toEqual(['wrx', 'sti']);
     expect(normalizeTag('#E46')).toBe('e46');
     expect(normalizeTag('drop table')).toBeNull();
+  });
+});
+
+describe('mentionAtCaret', () => {
+  it('finds the @name being typed', () => {
+    expect(mentionAtCaret('hey @ma', 7)).toEqual({ start: 4, end: 7, query: 'ma' });
+    expect(mentionAtCaret('@j', 2)).toEqual({ start: 0, end: 2, query: 'j' });
+  });
+  it('ignores emails, a bare @ and text after a space', () => {
+    expect(mentionAtCaret('me@gmail', 8)).toBeNull();
+    expect(mentionAtCaret('hey @', 5)).toBeNull();
+    expect(mentionAtCaret('@mark is here', 13)).toBeNull();
+  });
+  it('uses the caret, not the end of the text', () => {
+    expect(mentionAtCaret('@ab and more', 3)).toEqual({ start: 0, end: 3, query: 'ab' });
   });
 });

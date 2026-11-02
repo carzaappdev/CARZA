@@ -5,6 +5,7 @@ import { cache } from 'react';
 import { MessageCircleIcon } from 'lucide-react';
 import { z } from 'zod';
 import { getPost, getReplies } from '@carza/db';
+import { BackHeader } from '@/components/feed/back-header';
 import { Composer } from '@/components/feed/composer';
 import { PostCard } from '@/components/feed/post-card';
 import { Button } from '@/components/ui/button';
@@ -45,10 +46,11 @@ export default async function PostPage({ params }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-[640px] flex-1 sm:border-x">
-      <h1 className="sr-only">Post by {post.author.display_name}</h1>
+      <BackHeader title="Thread" />
       {parent ? <PostCard post={parent} viewerId={viewerId} connector /> : null}
       <div className="border-b">
-        <PostCard post={post} viewerId={viewerId} size="lg" />
+        {/* Without a parent above (a reel comment, or a reply whose post is hidden), say what it answers. */}
+        <PostCard post={post} viewerId={viewerId} size="lg" showReplyContext={!parent} />
       </div>
 
       <div id="reply" className="scroll-mt-32">
