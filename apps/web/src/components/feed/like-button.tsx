@@ -46,7 +46,7 @@ export function LikeButton({
       <Link
         href={`/sign-in?next=${encodeURIComponent(`/p/${postId}`)}` as Route}
         className={actionClass}
-        aria-label="Sign in to like"
+        aria-label={`Sign in to like. ${likes(optimistic.count)}`}
       >
         {content}
       </Link>
@@ -58,7 +58,8 @@ export function LikeButton({
       type="button"
       className={actionClass}
       aria-pressed={optimistic.liked}
-      aria-label={optimistic.liked ? 'Unlike' : 'Like'}
+      // Stable verb with aria-pressed, plus the count (the visible number is hidden by the label).
+      aria-label={`Like, ${likes(optimistic.count)}`}
       onClick={() =>
         startTransition(async () => {
           const next = {
@@ -79,3 +80,5 @@ export function LikeButton({
     </button>
   );
 }
+
+const likes = (n: number) => `${n} ${n === 1 ? 'like' : 'likes'}`;

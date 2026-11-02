@@ -5,6 +5,7 @@ import { MessagesSquareIcon, UsersIcon } from 'lucide-react';
 import { getFeed } from '@carza/db';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { FeedList } from '@/components/feed/feed-list';
+import { FeedRail } from '@/components/feed/feed-rail';
 import { Landing, LOOK_AROUND_HREF } from '@/components/landing/landing';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/server';
@@ -39,63 +40,66 @@ export default async function FeedPage({
   );
 
   return (
-    <div className="mx-auto w-full max-w-[640px] flex-1 sm:border-x">
-      <h1 className="sr-only">Feed</h1>
-      <nav
-        aria-label="Feeds"
-        className="bg-background/95 sticky top-14 z-30 grid grid-cols-2 border-b backdrop-blur md:top-16"
-      >
-        <FeedTab href={viewer ? '/' : LOOK_AROUND_HREF} active={feed === 'for-you'}>
-          For you
-        </FeedTab>
-        <FeedTab
-          href={
-            (viewer
-              ? '/?feed=following'
-              : `/sign-in?next=${encodeURIComponent('/?feed=following')}`) as Route
-          }
-          active={feed === 'following'}
+    <div className="mx-auto flex w-full max-w-[972px] flex-1 justify-center gap-8">
+      <div className="w-full max-w-[640px] min-w-0 sm:border-x">
+        <h1 className="sr-only">Feed</h1>
+        <nav
+          aria-label="Feeds"
+          className="bg-background/95 sticky top-14 z-30 grid grid-cols-2 border-b backdrop-blur md:top-16"
         >
-          Following
-        </FeedTab>
-      </nav>
+          <FeedTab href={viewer ? '/' : LOOK_AROUND_HREF} active={feed === 'for-you'}>
+            For you
+          </FeedTab>
+          <FeedTab
+            href={
+              (viewer
+                ? '/?feed=following'
+                : `/sign-in?next=${encodeURIComponent('/?feed=following')}`) as Route
+            }
+            active={feed === 'following'}
+          >
+            Following
+          </FeedTab>
+        </nav>
 
-      {viewer ? null : (
-        <div className="flex items-center gap-3 border-b px-4 py-4">
-          <p className="text-muted-foreground flex-1 text-[15px]">
-            Join Carza to post, follow local car people and RSVP to meets.
-          </p>
-          <Button asChild size="sm" className="rounded-full">
-            <Link href="/sign-up">Join</Link>
-          </Button>
-        </div>
-      )}
+        {viewer ? null : (
+          <div className="flex items-center gap-3 border-b px-4 py-4">
+            <p className="text-muted-foreground flex-1 text-[15px]">
+              Join Carza to post, follow local car people and RSVP to meets.
+            </p>
+            <Button asChild size="sm" className="rounded-full">
+              <Link href="/sign-up">Join</Link>
+            </Button>
+          </div>
+        )}
 
-      <FeedList
-        key={`${feed}:${initial.posts[0]?.id ?? 'empty'}:${initial.posts.length}`}
-        initial={initial}
-        viewer={viewer}
-        empty={
-          feed === 'following' ? (
-            <EmptyState
-              Icon={UsersIcon}
-              title="Nobody here yet"
-              body="Follow people from their profile and their posts will show up here."
-              action={
-                <Button asChild variant="outline" className="rounded-full">
-                  <Link href="/">See all posts</Link>
-                </Button>
-              }
-            />
-          ) : (
-            <EmptyState
-              Icon={MessagesSquareIcon}
-              title="No posts yet"
-              body="Be the first: share your ride, a build update or a question for local car people."
-            />
-          )
-        }
-      />
+        <FeedList
+          key={`${feed}:${initial.posts[0]?.id ?? 'empty'}:${initial.posts.length}`}
+          initial={initial}
+          viewer={viewer}
+          empty={
+            feed === 'following' ? (
+              <EmptyState
+                Icon={UsersIcon}
+                title="Nobody here yet"
+                body="Follow people from their profile and their posts will show up here."
+                action={
+                  <Button asChild variant="outline" className="rounded-full">
+                    <Link href="/">See all posts</Link>
+                  </Button>
+                }
+              />
+            ) : (
+              <EmptyState
+                Icon={MessagesSquareIcon}
+                title="No posts yet"
+                body="Be the first: share your ride, a build update or a question for local car people."
+              />
+            )
+          }
+        />
+      </div>
+      <FeedRail signedIn={viewer !== null} />
     </div>
   );
 }
