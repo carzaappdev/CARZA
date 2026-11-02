@@ -18,7 +18,8 @@ import { ShareButton } from '@/components/listings/share-button';
 import { SafetyMenu } from '@/components/safety/safety-menu';
 import { clientEnv } from '@/env/client';
 import { getUser } from '@/lib/auth';
-import { eventCalendarInfo } from '@/lib/event-calendar';
+import { eventCalendarInfo, eventJsonLd } from '@/lib/event-calendar';
+import { publicStorageUrl } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/viewer';
 
@@ -66,6 +67,16 @@ export default async function EventPage({ params }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-[640px] flex-1 sm:border-x">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: eventJsonLd(
+            event,
+            clientEnv.NEXT_PUBLIC_SITE_URL,
+            event.cover_path ? publicStorageUrl('post-photos', event.cover_path) : null,
+          ),
+        }}
+      />
       {event.cover_path ? (
         <EventCover path={event.cover_path} sizes="(min-width: 640px) 640px, 100vw" priority />
       ) : null}
