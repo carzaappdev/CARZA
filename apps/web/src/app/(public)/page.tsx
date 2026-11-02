@@ -5,6 +5,7 @@ import { MessagesSquareIcon, UsersIcon } from 'lucide-react';
 import { getFeed } from '@carza/db';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { FeedList } from '@/components/feed/feed-list';
+import { Landing, LOOK_AROUND_HREF } from '@/components/landing/landing';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
@@ -16,6 +17,9 @@ export default async function FeedPage({
   searchParams: Promise<{ feed?: string | string[] }>;
 }) {
   const viewer = await getViewer();
+  const params = await searchParams;
+  // Logged-out visitors see what Carza is first; "Look around" (?feed=…) opens the feed.
+  if (!viewer && params.feed === undefined) return <Landing />;
   if (viewer) {
     // First visit after signing up: run the short setup first.
     const { data: setup } = await (
@@ -27,7 +31,7 @@ export default async function FeedPage({
       .maybeSingle();
     if (setup && !setup.onboarded_at) redirect('/welcome');
   }
-  const feed = (await searchParams).feed === 'following' && viewer ? 'following' : 'for-you';
+  const feed = params.feed === 'following' && viewer ? 'following' : 'for-you';
   const initial = await getFeed(
     await createClient(),
     { feed, before: null, beforeId: null },
@@ -41,7 +45,7 @@ export default async function FeedPage({
         aria-label="Feeds"
         className="bg-background/95 sticky top-14 z-30 grid grid-cols-2 border-b backdrop-blur md:top-16"
       >
-        <FeedTab href="/" active={feed === 'for-you'}>
+        <FeedTab href={viewer ? '/' : LOOK_AROUND_HREF} active={feed === 'for-you'}>
           For you
         </FeedTab>
         <FeedTab
