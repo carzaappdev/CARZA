@@ -148,15 +148,28 @@ export async function getTrendingTags(client: TypedClient, limit = 12) {
 }
 
 /** People whose username or name contains the query. `query` must already be cleaned by peopleQuerySchema. */
-export async function searchPeople(client: TypedClient, query: string) {
+export async function searchPeople(client: TypedClient, query: string, limit = 30) {
   const { data, error } = await client
     .from('profiles')
     .select('id, username, display_name, avatar_path, bio, city, region')
     .or(`username.ilike.*${query.replace(/ /g, '')}*,display_name.ilike."*${query}*"`)
     .order('username')
-    .limit(30);
+    .limit(limit);
   if (error) throw error;
   return data;
+}
+
+/** Posts and replies whose text contains the query, newest first. `query` must be cleaned by peopleQuerySchema. */
+export async function searchPosts(client: TypedClient, query: string, viewerId: string | null) {
+  const { data, error } = await client
+    .from('posts')
+    .select(POST_FIELDS)
+    .is('reel_id', null)
+    .ilike('body', `%${query.replace(/_/g, '\\_')}%`)
+    .order('created_at', { ascending: false })
+    .limit(30);
+  if (error) throw error;
+  return hydrate(client, data, viewerId);
 }
 
 /** One post, or null. */
@@ -285,3 +298,16 @@ export async function getProfile(client: TypedClient, username: string, viewerId
 }
 
 export type ProfileView = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
+
+/** How many of the first 1,000 "founding member" numbers are still free. */
+export async function getFoundingSpotsLeft(client: TypedClient) {
+  const { data, error } = await client
+    .from('profiles')
+    .select('founding_number')
+    .not('founding_number', 'is', null)
+    .order('founding_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return Math.max(0, 1000 - (data?.founding_number ?? 0));
+}
