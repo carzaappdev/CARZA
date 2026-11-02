@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from 'next-themes';
+import { CookieNotice } from '@/components/legal/cookie-notice';
 import { THEME_COLORS } from '@/components/theme/colors';
 import { ThemeColor } from '@/components/theme/theme-color';
 import { Toaster } from '@/components/ui/sonner';
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         >
           <ThemeColor />
           {children}
+          <CookieNotice />
           <Toaster />
         </ThemeProvider>
       </body>

@@ -9,7 +9,7 @@ const REMOVABLE = { post: 'posts', reel: 'reels', event: 'events' } as const;
 
 /**
  * Admins only. "remove" deletes the reported post, reel or event (RLS lets admins delete them) and
- * resolves every open report on it; "dismiss" closes this report.
+ * resolves every open report on it; "dismiss" closes every open report on it.
  */
 export async function resolveReport(input: unknown): Promise<ActionResult<null>> {
   const parsed = resolveReportSchema.safeParse(input);
@@ -26,14 +26,8 @@ export async function resolveReport(input: unknown): Promise<ActionResult<null>>
     .maybeSingle();
   if (readError || !report) return fail('NOT_FOUND', 'That report is gone.');
 
-  const resolved = { resolved_by: user.id, resolved_at: new Date().toISOString() };
-  if (parsed.data.decision === 'dismiss') {
-    const { error } = await supabase
-      .from('reports')
-      .update({ status: 'dismissed', ...resolved })
-      .eq('id', report.id);
-    if (error) return fail('INTERNAL', 'Couldn’t update the report.');
-  } else {
+  // A decision covers every open report on the same thing, so duplicates don't linger in the queue.
+  if (parsed.data.decision === 'remove') {
     const table =
       report.target_type in REMOVABLE
         ? REMOVABLE[report.target_type as keyof typeof REMOVABLE]
@@ -45,14 +39,18 @@ export async function resolveReport(input: unknown): Promise<ActionResult<null>>
         return fail('INTERNAL', 'Couldn’t remove it. Try again.');
       }
     }
-    const { error } = await supabase
-      .from('reports')
-      .update({ status: 'resolved', ...resolved })
-      .eq('target_type', report.target_type)
-      .eq('target_id', report.target_id)
-      .in('status', ['open', 'reviewing']);
-    if (error) return fail('INTERNAL', 'Couldn’t update the report.');
   }
+  const { error } = await supabase
+    .from('reports')
+    .update({
+      status: parsed.data.decision === 'remove' ? 'resolved' : 'dismissed',
+      resolved_by: user.id,
+      resolved_at: new Date().toISOString(),
+    })
+    .eq('target_type', report.target_type)
+    .eq('target_id', report.target_id)
+    .in('status', ['open', 'reviewing']);
+  if (error) return fail('INTERNAL', 'Couldn’t update the report.');
   revalidatePath('/account/reports');
   return ok(null);
 }
