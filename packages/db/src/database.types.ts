@@ -1381,6 +1381,7 @@ export type Database = {
         };
         Returns: string;
       };
+      delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
       following_feed: {
         Args: { p_before?: string; p_before_id?: string; p_limit?: number };
         Returns: {
