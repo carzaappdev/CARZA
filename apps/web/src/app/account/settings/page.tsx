@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { DownloadIcon, KeyRoundIcon, LogOutIcon } from 'lucide-react';
 import { DeleteAccount } from '@/components/account/delete-account';
+import { HomeZip } from '@/components/account/home-zip';
 import { PageHeader } from '@/components/layout/page-header';
 import { ProfileForm } from '@/components/feed/profile-form';
 import { BlockedList } from '@/components/safety/blocked-list';
@@ -18,10 +19,10 @@ export const metadata: Metadata = { title: 'Settings' };
 export default async function SettingsPage() {
   const user = await requireUser('/account/settings');
   const supabase = await createClient();
-  const [{ data: profile }, { data: blocks }] = await Promise.all([
+  const [{ data: profile }, { data: blocks }, { data: home }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('display_name, username, bio, avatar_path')
+      .select('display_name, username, bio, avatar_path, city, region')
       .eq('id', user.id)
       .single(),
     supabase
@@ -29,6 +30,7 @@ export default async function SettingsPage() {
       .select('profile:profiles!blocks_blocked_id_fkey ( id, username, display_name, avatar_path )')
       .eq('blocker_id', user.id)
       .order('created_at', { ascending: false }),
+    supabase.from('profile_private').select('postal_code').eq('user_id', user.id).maybeSingle(),
   ]);
   const providers = (user.app_metadata.providers as string[] | undefined) ?? [];
   const hasPassword = providers.includes('email');
@@ -45,6 +47,15 @@ export default async function SettingsPage() {
             avatarPath: profile?.avatar_path ?? null,
           }}
         />
+      </Section>
+
+      <Section id="location" title="Location">
+        <p className="text-muted-foreground -mt-1 text-sm">
+          {profile?.city
+            ? `Your profile shows ${profile.city}, ${profile.region}. We use your ZIP to find events near you.`
+            : 'Add your ZIP to see events near you. Only your city shows on your profile.'}
+        </p>
+        <HomeZip initial={home?.postal_code ?? null} />
       </Section>
 
       <Section id="display" title="Display">
