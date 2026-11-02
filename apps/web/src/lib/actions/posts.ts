@@ -1,12 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getFeed, type FeedPage } from '@carza/db';
+import { getFeed, getPost, searchPeople, type FeedPage, type PostView } from '@carza/db';
 import {
   createPostSchema,
   fail,
   feedCursorSchema,
   ok,
+  peopleQuerySchema,
   postIdSchema,
   setPostLikedSchema,
   type ActionResult,
@@ -14,8 +15,8 @@ import {
 import { getUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
-/** Publishes a post or a reply. Photos must already be uploaded to the author's folder. */
-export async function createPost(input: unknown): Promise<ActionResult<{ id: string }>> {
+/** Publishes a post or a reply and returns it, so lists can show it at once. Photos must already be uploaded. */
+export async function createPost(input: unknown): Promise<ActionResult<PostView>> {
   const parsed = createPostSchema.safeParse(input);
   if (!parsed.success) {
     return fail('VALIDATION', parsed.error.issues[0]?.message ?? 'That post isn’t valid.');
@@ -49,7 +50,9 @@ export async function createPost(input: unknown): Promise<ActionResult<{ id: str
   if (!reelId) revalidatePath('/');
   if (replyToId) revalidatePath(`/p/${replyToId}`);
   if (eventId) revalidatePath(`/events/${eventId}`);
-  return ok({ id: data.id });
+  const post = await getPost(supabase, data.id, user.id).catch(() => null);
+  if (!post) return fail('INTERNAL', 'Posted, but couldn’t load it. Refresh to see it.');
+  return ok(post);
 }
 
 /** Deletes the viewer's own post (RLS) and its photos. */
@@ -115,3 +118,29 @@ export async function loadFeedPage(input: unknown): Promise<ActionResult<FeedPag
     return fail('INTERNAL', 'Couldn’t load more posts.');
   }
 }
+
+/** Up to 6 people for @mention suggestions while writing. */
+export async function suggestMentions(input: unknown): Promise<ActionResult<MentionSuggestion[]>> {
+  const parsed = peopleQuerySchema.safeParse(input);
+  if (!parsed.success || parsed.data.length < 1) return ok([]);
+  const user = await getUser();
+  if (!user) return fail('UNAUTHENTICATED', 'Sign in first.');
+  try {
+    const people = await searchPeople(await createClient(), parsed.data, 6);
+    return ok(
+      people.map((p) => ({
+        username: p.username,
+        displayName: p.display_name,
+        avatarPath: p.avatar_path,
+      })),
+    );
+  } catch {
+    return ok([]);
+  }
+}
+
+export type MentionSuggestion = {
+  username: string;
+  displayName: string;
+  avatarPath: string | null;
+};

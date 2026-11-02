@@ -13,6 +13,7 @@ import { GarageShowcase } from '@/components/garage/garage-showcase';
 import { SafetyMenu } from '@/components/safety/safety-menu';
 import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
+import { RichText } from '@/components/feed/rich-text';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { ShareButton } from '@/components/listings/share-button';
 import { Button } from '@/components/ui/button';
@@ -95,7 +96,9 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <FeatureToggle userId={profile.id} featured={profile.featured_at !== null} />
         ) : null}
         {profile.bio ? (
-          <p className="text-[15px] leading-[1.4] whitespace-pre-wrap">{profile.bio}</p>
+          <p className="text-[15px] leading-[1.4] break-words whitespace-pre-wrap">
+            <RichText text={profile.bio} />
+          </p>
         ) : null}
         <GarageShowcase cars={garage} />
         <p className="text-muted-foreground flex flex-wrap items-center gap-x-1 text-sm">

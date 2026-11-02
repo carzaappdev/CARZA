@@ -4,7 +4,6 @@ import { redirect } from 'next/navigation';
 import { MessagesSquareIcon, UsersIcon } from 'lucide-react';
 import { getFeed } from '@carza/db';
 import { EmptyState } from '@/components/feedback/empty-state';
-import { Composer } from '@/components/feed/composer';
 import { FeedList } from '@/components/feed/feed-list';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/server';
@@ -57,9 +56,7 @@ export default async function FeedPage({
         </FeedTab>
       </nav>
 
-      {viewer ? (
-        <Composer viewer={viewer} />
-      ) : (
+      {viewer ? null : (
         <div className="flex items-center gap-3 border-b px-4 py-4">
           <p className="text-muted-foreground flex-1 text-[15px]">
             Join Carza to post, follow local car people and RSVP to meets.
@@ -73,7 +70,7 @@ export default async function FeedPage({
       <FeedList
         key={`${feed}:${initial.posts[0]?.id ?? 'empty'}:${initial.posts.length}`}
         initial={initial}
-        viewerId={viewer?.id ?? null}
+        viewer={viewer}
         empty={
           feed === 'following' ? (
             <EmptyState
