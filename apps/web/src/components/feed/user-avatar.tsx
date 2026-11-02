@@ -1,4 +1,5 @@
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import Image from 'next/image';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { publicStorageUrl } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 
@@ -28,12 +29,19 @@ export function UserAvatar({
 }) {
   return (
     <Avatar className={cn(large ? 'size-20' : 'size-9', className)}>
-      {path ? (
-        <AvatarImage src={publicStorageUrl('avatars', path)} alt="" className="object-cover" />
-      ) : null}
       <AvatarFallback className={cn('bg-muted text-foreground', large && 'text-2xl')}>
         {initials(name)}
       </AvatarFallback>
+      {/* Uploads are up to 2048px; the optimizer serves a tiny copy instead. Initials show underneath while it loads. */}
+      {path ? (
+        <Image
+          src={publicStorageUrl('avatars', path)}
+          alt=""
+          fill
+          sizes={large ? '80px' : '48px'}
+          className="object-cover"
+        />
+      ) : null}
     </Avatar>
   );
 }

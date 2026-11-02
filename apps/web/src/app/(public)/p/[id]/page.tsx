@@ -5,10 +5,12 @@ import { cache } from 'react';
 import { MessageCircleIcon } from 'lucide-react';
 import { z } from 'zod';
 import { getPost, getReplies } from '@carza/db';
+import { BackHeader } from '@/components/feed/back-header';
 import { Composer } from '@/components/feed/composer';
 import { PostCard } from '@/components/feed/post-card';
 import { Button } from '@/components/ui/button';
 import { getUser } from '@/lib/auth';
+import { publicStorageUrl } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/viewer';
 
@@ -24,9 +26,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await loadPost((await params).id);
   if (!post) return { title: 'Post not found' };
   const text = post.body || 'Photo';
+  const title = `${post.author.display_name}: “${text.length > 60 ? `${text.slice(0, 57)}…` : text}”`;
+  const description = post.body.slice(0, 200) || undefined;
+  const photo = post.photos[0];
   return {
-    title: `${post.author.display_name}: “${text.length > 60 ? `${text.slice(0, 57)}…` : text}”`,
-    description: post.body.slice(0, 200) || undefined,
+    title,
+    description,
+    // A photo post previews with its first photo; text posts keep the site card.
+    ...(photo && {
+      openGraph: {
+        title,
+        description,
+        type: 'article',
+        images: [
+          {
+            url: publicStorageUrl('post-photos', photo.path),
+            width: photo.width,
+            height: photo.height,
+          },
+        ],
+      },
+    }),
   };
 }
 
@@ -45,10 +65,11 @@ export default async function PostPage({ params }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-[640px] flex-1 sm:border-x">
-      <h1 className="sr-only">Post by {post.author.display_name}</h1>
+      <BackHeader title="Thread" />
       {parent ? <PostCard post={parent} viewerId={viewerId} connector /> : null}
       <div className="border-b">
-        <PostCard post={post} viewerId={viewerId} size="lg" />
+        {/* Without a parent above (a reel comment, or a reply whose post is hidden), say what it answers. */}
+        <PostCard post={post} viewerId={viewerId} size="lg" showReplyContext={!parent} />
       </div>
 
       <div id="reply" className="scroll-mt-32">

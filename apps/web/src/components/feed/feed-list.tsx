@@ -2,20 +2,26 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Loader2Icon } from 'lucide-react';
+import { toast } from 'sonner';
 import type { FeedPage, PostView } from '@carza/db';
 import { loadFeedPage } from '@/lib/actions/posts';
+import { Composer } from './composer';
 import { PostCard } from './post-card';
 
-/** Posts with infinite scroll. Re-mount (via `key`) when the first page changes. */
+/**
+ * Posts with infinite scroll, under the composer when signed in. A new post goes straight to the top
+ * (a ranked feed wouldn't put a fresh post there). Re-mount (via `key`) when the first page changes.
+ */
 export function FeedList({
   initial,
-  viewerId,
+  viewer,
   empty,
 }: {
   initial: FeedPage;
-  viewerId: string | null;
+  viewer: { id: string; displayName: string; avatarPath: string | null } | null;
   empty: React.ReactNode;
 }) {
+  const viewerId = viewer?.id ?? null;
   const [posts, setPosts] = useState<PostView[]>(initial.posts);
   const [next, setNext] = useState(initial.next);
   const [failed, setFailed] = useState(false);
@@ -48,10 +54,27 @@ export function FeedList({
     return () => observer.disconnect();
   }, [next, failed]);
 
-  if (posts.length === 0) return <div className="px-4 py-8">{empty}</div>;
+  const composer = viewer ? (
+    <Composer
+      viewer={viewer}
+      onPosted={(post) => {
+        setPosts((all) => [post, ...all.filter((p) => p.id !== post.id)]);
+        toast.success('Posted');
+      }}
+    />
+  ) : null;
+
+  if (posts.length === 0)
+    return (
+      <>
+        {composer}
+        <div className="px-4 py-8">{empty}</div>
+      </>
+    );
 
   return (
     <>
+      {composer}
       <ul>
         {posts.map((post) => (
           <li key={post.id}>

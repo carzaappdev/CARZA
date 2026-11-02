@@ -3,14 +3,41 @@
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { MapPinIcon } from 'lucide-react';
+import { Loader2Icon, LocateFixedIcon, MapPinIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import { ZIP_COOKIE } from '@/lib/search';
 
-/** "Near Austin, TX" chip that turns into a ZIP field. Remembers the ZIP in the same cookie as search. */
+/**
+ * "Near Austin, TX" chip that turns into a ZIP field or uses the device's location. Remembers a typed ZIP
+ * in the same cookie as search; a device location only lives in the link, rounded to ~1 km.
+ */
 export function ZipPicker({ label, zip }: { label: string; zip: string | null }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(zip ?? '');
+  const [locating, setLocating] = useState(false);
+
+  function locate() {
+    if (!('geolocation' in navigator)) {
+      toast.error('Your browser can’t share a location. Enter a ZIP code instead.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        setLocating(false);
+        setEditing(false);
+        router.push(
+          `/events?lat=${coords.latitude.toFixed(2)}&lng=${coords.longitude.toFixed(2)}` as Route,
+        );
+      },
+      () => {
+        setLocating(false);
+        toast.error('We couldn’t get your location. Enter a ZIP code instead.');
+      },
+      { maximumAge: 10 * 60 * 1000, timeout: 10_000 },
+    );
+  }
 
   if (!editing) {
     return (
@@ -26,7 +53,7 @@ export function ZipPicker({ label, zip }: { label: string; zip: string | null })
   }
   return (
     <form
-      className="flex items-center gap-2"
+      className="flex flex-wrap items-center gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         if (!/^\d{5}$/.test(value)) return;
@@ -55,6 +82,19 @@ export function ZipPicker({ label, zip }: { label: string; zip: string | null })
         disabled={!/^\d{5}$/.test(value)}
       >
         Go
+      </button>
+      <button
+        type="button"
+        onClick={locate}
+        disabled={locating}
+        className="hover:bg-accent focus-visible:ring-ring/50 inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-medium outline-none focus-visible:ring-[3px] disabled:opacity-50"
+      >
+        {locating ? (
+          <Loader2Icon className="size-4 animate-spin" aria-hidden />
+        ) : (
+          <LocateFixedIcon className="size-4" aria-hidden />
+        )}
+        Use my location
       </button>
     </form>
   );

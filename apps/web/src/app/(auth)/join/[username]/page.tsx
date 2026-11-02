@@ -49,7 +49,7 @@ export default async function JoinPage({ params }: Props) {
       <p className="text-muted-foreground text-sm">
         Already have an account?{' '}
         <Link
-          href="/sign-in"
+          href={{ pathname: '/sign-in', query: { next: `/u/${inviter.username}` } }}
           className="text-foreground font-semibold underline decoration-foreground/25 underline-offset-4"
         >
           Sign in

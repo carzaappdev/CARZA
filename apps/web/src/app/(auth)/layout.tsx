@@ -54,12 +54,16 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             <div className="relative w-full max-w-[560px]">
               <CarzaMark
                 tone="dark"
+                sizes="560px"
+                loading="lazy"
                 className="h-auto w-full drop-shadow-[0_0_40px_rgba(255,255,255,0.18)]"
               />
               {/* Reflection on the showroom floor, clipped to a short strip under the car */}
               <div aria-hidden className="absolute top-full left-0 h-14 w-full overflow-hidden">
                 <CarzaMark
                   tone="dark"
+                  sizes="560px"
+                  loading="lazy"
                   className="pointer-events-none h-auto w-full -scale-y-100 opacity-[0.07] [mask-image:linear-gradient(to_bottom,black,transparent_60%)]"
                 />
               </div>

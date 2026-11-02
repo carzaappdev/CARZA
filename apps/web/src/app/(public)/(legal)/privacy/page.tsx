@@ -5,14 +5,14 @@ import { LegalPage, LegalSection } from '@/components/legal/legal-page';
 function Contact() {
   return CONTACT_EMAIL ? (
     <>
-      Email{' '}
+      email{' '}
       <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline underline-offset-4">
         {CONTACT_EMAIL}
       </a>{' '}
       and we will answer within 30 days.
     </>
   ) : (
-    <>Use Report on any Carza post and choose “Other”, and we will answer within 30 days.</>
+    <>use Report in the app and choose “Other”, and we will answer within 30 days.</>
   );
 }
 
@@ -113,7 +113,11 @@ export default function PrivacyPage() {
           <li>Edit your profile and delete your posts, reels, comments and events at any time.</li>
           <li>Block people so neither of you sees the other.</li>
           <li>
-            Ask us for a copy of your data, to correct it, or to delete your account. <Contact />
+            Download a copy of your data, or delete your account and everything in it, from Settings
+            at any time.
+          </li>
+          <li>
+            For any other privacy request, <Contact />
           </li>
         </ul>
         <p>

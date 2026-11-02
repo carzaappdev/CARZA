@@ -26,7 +26,15 @@ const PROVIDERS = [
   },
 ] as const;
 
-export function OAuthButtons({ next }: { next: string }) {
+/** Renders only the providers switched on in Supabase (see enabledOAuthProviders); nothing if none are. */
+export function OAuthButtons({
+  next,
+  providers,
+}: {
+  next: string;
+  providers: readonly (typeof PROVIDERS)[number]['id'][];
+}) {
+  const shown = PROVIDERS.filter((p) => providers.includes(p.id));
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
 
@@ -46,10 +54,12 @@ export function OAuthButtons({ next }: { next: string }) {
     }
   }
 
+  if (!shown.length) return null;
+
   return (
     <>
       <div className="flex flex-col gap-2">
-        {PROVIDERS.map((p) => (
+        {shown.map((p) => (
           <button
             key={p.id}
             type="button"
