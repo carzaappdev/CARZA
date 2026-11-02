@@ -23,6 +23,14 @@ export function ReelUploader() {
 
   useEffect(() => () => (video ? URL.revokeObjectURL(video.previewUrl) : undefined), [video]);
 
+  // Leaving mid-upload would lose the clip, so ask first.
+  useEffect(() => {
+    if (stage !== 'uploading') return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [stage]);
+
   async function pick(file: File | undefined) {
     if (!file) return;
     setStage('reading');
@@ -40,12 +48,13 @@ export function ReelUploader() {
   async function post() {
     if (!video) return;
     setStage('uploading');
+    const failed = 'The upload didn’t finish. Check your connection and try again.';
     const [poster, clip] = await Promise.all([
       uploadFile('reels', video.poster, 'image/webp'),
       uploadFile('reels', video.file, video.contentType),
-    ]);
+    ]).catch(() => [{ error: failed }, { error: failed }] as const);
     if ('error' in poster || 'error' in clip) {
-      toast.error('error' in clip ? clip.error : 'error' in poster ? poster.error : '');
+      toast.error('error' in clip ? clip.error : 'error' in poster ? poster.error : failed);
       setStage('ready');
       return;
     }
@@ -55,8 +64,8 @@ export function ReelUploader() {
       width: video.width,
       height: video.height,
       durationSeconds: video.durationSeconds,
-      caption,
-    });
+      caption: caption.trim(),
+    }).catch(() => ({ ok: false as const, error: { message: failed } }));
     if (!result.ok) {
       toast.error(result.error.message);
       setStage('ready');
@@ -124,16 +133,21 @@ export function ReelUploader() {
       )}
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="caption" className="text-sm font-medium">
-          Caption
-        </label>
+        <div className="flex items-baseline justify-between">
+          <label htmlFor="caption" className="text-sm font-medium">
+            Caption
+          </label>
+          <span className="text-muted-foreground text-xs tabular-nums" aria-hidden>
+            {caption.length}/{LIMITS.reelCaptionMaxLength}
+          </span>
+        </div>
         <textarea
           id="caption"
           rows={3}
           maxLength={LIMITS.reelCaptionMaxLength}
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
-          placeholder="What are we looking at?"
+          placeholder="What are we looking at? Add #tags and @mention friends."
           className="bg-background focus-visible:ring-ring/50 w-full rounded-lg border px-3 py-2.5 text-[15px] leading-[1.4] outline-none focus-visible:ring-[3px]"
         />
       </div>
@@ -147,7 +161,7 @@ export function ReelUploader() {
       >
         {stage === 'uploading' ? (
           <>
-            <Loader2Icon className="animate-spin" aria-hidden /> Uploading…
+            <Loader2Icon className="animate-spin" aria-hidden /> Uploading… keep this page open
           </>
         ) : (
           'Post reel'
