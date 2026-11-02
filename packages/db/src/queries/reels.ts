@@ -122,3 +122,26 @@ export async function getReel(client: TypedClient, id: string, viewerId: string 
   if (error) throw error;
   return data ? ((await hydrate(client, [data], viewerId))[0] ?? null) : null;
 }
+
+export type ProfileReel = { id: string; posterPath: string; viewCount: number; caption: string };
+
+/** One person's latest reels, for the grid on their profile. */
+export async function getProfileReels(
+  client: TypedClient,
+  authorId: string,
+): Promise<ProfileReel[]> {
+  const { data, error } = await client
+    .from('reels')
+    .select('id, poster_path, view_count, caption')
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(LIMITS.profileReelGrid);
+  if (error) throw error;
+  return data.map((r) => ({
+    id: r.id,
+    posterPath: r.poster_path,
+    viewCount: r.view_count,
+    caption: r.caption,
+  }));
+}
