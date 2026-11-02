@@ -24,6 +24,7 @@ async function signIn(page: Page, email: string) {
 
 test('a visitor can browse the feed, reels and events', async ({ page }) => {
   await page.goto('/');
+  await page.getByRole('link', { name: 'Look around first' }).click();
   await expect(page.getByText('Cars and coffee this Saturday at 8')).toBeVisible();
 
   await page
