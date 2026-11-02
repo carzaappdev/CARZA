@@ -22,3 +22,5 @@ export * from './logic/notifications';
 export * from './schemas/garage';
 export * from './logic/calendar';
 export * from './logic/rich-text';
+export * from './schemas/message';
+export * from './logic/messages';

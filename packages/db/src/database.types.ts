@@ -83,6 +83,8 @@ export type Database = {
           created_by: string | null;
           dealership_id: string | null;
           dealership_last_read_at: string | null;
+          dm_high: string | null;
+          dm_low: string | null;
           id: string;
           last_message_at: string;
           listing_id: string | null;
@@ -94,6 +96,8 @@ export type Database = {
           created_by?: string | null;
           dealership_id?: string | null;
           dealership_last_read_at?: string | null;
+          dm_high?: string | null;
+          dm_low?: string | null;
           id?: string;
           last_message_at?: string;
           listing_id?: string | null;
@@ -104,6 +108,8 @@ export type Database = {
           created_by?: string | null;
           dealership_id?: string | null;
           dealership_last_read_at?: string | null;
+          dm_high?: string | null;
+          dm_low?: string | null;
           id?: string;
           last_message_at?: string;
           listing_id?: string | null;
@@ -122,6 +128,20 @@ export type Database = {
             columns: ['dealership_id'];
             isOneToOne: false;
             referencedRelation: 'dealerships';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_dm_high_fkey';
+            columns: ['dm_high'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'conversations_dm_low_fkey';
+            columns: ['dm_low'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
             referencedColumns: ['id'];
           },
           {
@@ -1381,6 +1401,20 @@ export type Database = {
         };
         Returns: string;
       };
+      direct_inbox: {
+        Args: { p_limit?: number };
+        Returns: {
+          conversation_id: string;
+          last_body: string;
+          last_message_at: string;
+          last_sender_id: string;
+          other_avatar_path: string;
+          other_display_name: string;
+          other_id: string;
+          other_username: string;
+          unread: boolean;
+        }[];
+      };
       following_feed: {
         Args: { p_before?: string; p_before_id?: string; p_limit?: number };
         Returns: {
@@ -1503,6 +1537,7 @@ export type Database = {
       };
       set_featured: { Args: { p_featured: boolean; p_user_id: string }; Returns: undefined };
       start_conversation: { Args: { p_body: string; p_listing_id: string }; Returns: string };
+      start_direct_conversation: { Args: { p_user_id: string }; Returns: string };
       suggested_follows: {
         Args: { p_limit?: number };
         Returns: {
@@ -1526,6 +1561,7 @@ export type Database = {
           tag: string;
         }[];
       };
+      unread_direct_count: { Args: Record<PropertyKey, never>; Returns: number };
       upcoming_events: {
         Args: { p_lat?: number; p_limit?: number; p_lng?: number; p_radius_miles?: number };
         Returns: {

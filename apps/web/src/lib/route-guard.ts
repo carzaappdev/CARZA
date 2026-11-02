@@ -1,6 +1,6 @@
 import { safeNextPath } from '@carza/shared';
 
-const PROTECTED_PREFIXES = ['/account', '/dealer', '/notifications', '/welcome'];
+const PROTECTED_PREFIXES = ['/account', '/dealer', '/messages', '/notifications', '/welcome'];
 
 /**
  * The launch app is Feed, Reels and Events only. The marketplace, selling and dealer areas stay in the
@@ -12,7 +12,6 @@ const HIDDEN_FOR_LAUNCH = [
   '/dealers',
   '/dealer',
   '/account/listings',
-  '/account/messages',
   '/account/saved',
   '/account/test-drives',
 ];

@@ -16,6 +16,7 @@ const NOUN: Record<SocialReportTarget, string> = {
   reel: 'reel',
   event: 'event',
   user: 'account',
+  message: 'message',
 };
 
 /**

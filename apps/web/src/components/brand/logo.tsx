@@ -34,7 +34,8 @@ export function CarzaLogo({
   size?: 'sm' | 'md' | 'lg';
 }) {
   const mark = { sm: 'h-6 w-auto', md: 'h-8 w-auto', lg: 'h-14 w-auto' }[size];
-  const word = { sm: 'text-lg', md: 'text-xl', lg: 'text-4xl' }[size];
+  // The small (header) size drops the wordmark on the narrowest phones to make room for the icons.
+  const word = { sm: 'text-lg max-[379px]:hidden', md: 'text-xl', lg: 'text-4xl' }[size];
   return (
     <Link href="/" aria-label="Carza home" className="inline-flex items-center gap-3">
       {tone === 'auto' ? (

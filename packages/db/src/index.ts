@@ -22,3 +22,4 @@ export * from './queries/events';
 export * from './queries/reels';
 export * from './queries/notifications';
 export * from './queries/garage';
+export * from './queries/messages';
