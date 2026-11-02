@@ -29,6 +29,6 @@ export async function setFollowing(input: unknown): Promise<ActionResult<{ follo
     console.error('setFollowing failed', { code: error.code, userId: user.id });
     return fail('INTERNAL', 'Couldn’t update. Try again.');
   }
-  revalidatePath('/u/[username]', 'page');
+  revalidatePath('/u/[username]', 'layout');
   return ok({ following });
 }

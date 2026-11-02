@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { CarFrontIcon } from 'lucide-react';
 import { publicStorageUrl } from '@/lib/storage';
 import { cn } from '@/lib/utils';
@@ -12,11 +13,12 @@ export function CarThumb({ path, className }: { path: string | null; className?:
       )}
     >
       {path ? (
-        // eslint-disable-next-line @next/next/no-img-element -- small thumbnail from public storage
-        <img
+        <Image
           src={publicStorageUrl('post-photos', path)}
           alt=""
-          className="absolute inset-0 size-full object-cover"
+          fill
+          sizes="220px"
+          className="object-cover"
         />
       ) : (
         <CarFrontIcon className="text-muted-foreground size-1/2" aria-hidden />

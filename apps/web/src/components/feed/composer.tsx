@@ -4,12 +4,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { ImageIcon, Loader2Icon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import type { PostView } from '@carza/db';
 import { LIMITS, type PostPhoto } from '@carza/shared';
 import { Button } from '@/components/ui/button';
 import { createPost } from '@/lib/actions/posts';
 import { prepareImage } from '@/lib/images';
 import { uploadImage } from '@/lib/upload';
 import { cn } from '@/lib/utils';
+import { MentionList, useMentionSuggest } from './mention-suggest';
 import { UserAvatar } from './user-avatar';
 
 type Draft = { key: string; previewUrl: string; photo: PostPhoto | null };
@@ -22,6 +24,7 @@ export function Composer({
   reelId = null,
   onPosted,
   placeholder = 'What’s new in your garage?',
+  defaultBody = '',
   autoFocus = false,
 }: {
   viewer: { displayName: string; avatarPath: string | null };
@@ -30,23 +33,29 @@ export function Composer({
   eventId?: string | null;
   /** Makes the post a comment on this reel. */
   reelId?: string | null;
-  /** Called after posting, instead of refreshing the page. */
-  onPosted?: () => void;
+  /** Called with the new post instead of refreshing the page. */
+  onPosted?: (post: PostView) => void;
   placeholder?: string;
+  /** Starting text, e.g. "#e46 " on a tag page. */
+  defaultBody?: string;
   autoFocus?: boolean;
 }) {
   const router = useRouter();
   const id = useId();
   const textarea = useRef<HTMLTextAreaElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState(defaultBody);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [pending, startTransition] = useTransition();
+  const mentions = useMentionSuggest();
 
   const uploading = drafts.some((d) => d.photo === null);
   const remaining = LIMITS.postMaxLength - body.length;
   const canPost =
-    !pending && !uploading && remaining >= 0 && (body.trim() !== '' || drafts.length > 0);
+    !pending &&
+    !uploading &&
+    remaining >= 0 &&
+    (body.trim() !== defaultBody.trim() || drafts.length > 0);
 
   // Grow with the text instead of scrolling inside a tiny box.
   useEffect(() => {
@@ -87,6 +96,13 @@ export function Composer({
     );
   }
 
+  function pickMention(username: string) {
+    const next = mentions.pick(body, username);
+    if (!next) return;
+    setBody(next.text);
+    requestAnimationFrame(() => textarea.current?.setSelectionRange(next.caret, next.caret));
+  }
+
   function submit() {
     if (!canPost) return;
     startTransition(async () => {
@@ -97,9 +113,9 @@ export function Composer({
         return;
       }
       drafts.forEach((d) => URL.revokeObjectURL(d.previewUrl));
-      setBody('');
+      setBody(defaultBody);
       setDrafts([]);
-      if (onPosted) return onPosted();
+      if (onPosted) return onPosted(result.data);
       toast.success(replyToId ? 'Reply posted' : 'Posted');
       router.refresh();
     });
@@ -118,20 +134,53 @@ export function Composer({
         <label htmlFor={`${id}-body`} className="sr-only">
           {replyToId ? 'Your reply' : 'New post'}
         </label>
-        <textarea
-          id={`${id}-body`}
-          ref={textarea}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit();
-          }}
-          placeholder={placeholder}
-          rows={1}
-          autoFocus={autoFocus}
-          maxLength={LIMITS.postMaxLength + 50}
-          className="placeholder:text-muted-foreground block max-h-[50vh] min-h-9 w-full resize-none bg-transparent py-1.5 text-[15px] leading-[1.4] outline-none"
-        />
+        <div className="relative">
+          <textarea
+            id={`${id}-body`}
+            ref={textarea}
+            value={body}
+            onChange={(e) => {
+              setBody(e.target.value);
+              mentions.update(e.target.value, e.target.selectionStart);
+            }}
+            onBlur={() => mentions.close()}
+            role="combobox"
+            aria-expanded={mentions.open}
+            aria-controls={`${id}-mentions`}
+            aria-autocomplete="list"
+            onKeyDown={(e) => {
+              if (mentions.open) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  return mentions.move(e.key === 'ArrowDown' ? 1 : -1);
+                }
+                const person = mentions.people[mentions.active];
+                if ((e.key === 'Enter' || e.key === 'Tab') && person && !e.metaKey && !e.ctrlKey) {
+                  e.preventDefault();
+                  return pickMention(person.username);
+                }
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  return mentions.close();
+                }
+              }
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit();
+            }}
+            placeholder={placeholder}
+            rows={1}
+            autoFocus={autoFocus}
+            maxLength={LIMITS.postMaxLength + 50}
+            className="placeholder:text-muted-foreground block max-h-[50vh] min-h-9 w-full resize-none bg-transparent py-1.5 text-[15px] leading-[1.4] outline-none"
+          />
+          {mentions.open ? (
+            <MentionList
+              id={`${id}-mentions`}
+              people={mentions.people}
+              active={mentions.active}
+              onPick={pickMention}
+            />
+          ) : null}
+        </div>
         {drafts.length > 0 ? (
           <ul className="-mr-4 mt-2 flex gap-2 overflow-x-auto pr-4 pb-1">
             {drafts.map((d) => (
