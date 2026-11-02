@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, useSyncExternalStore, useTransition } from 'react';
 import { ImagePlusIcon, Loader2Icon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { LIMITS, isoToZonedInput, timeZoneAbbr, zonedInputToIso } from '@carza/shared';
+import { LIMITS, isoToZonedInput, timeZoneLabel, zonedInputToIso } from '@carza/shared';
 import { Button } from '@/components/ui/button';
 import { createEvent, updateEvent } from '@/lib/actions/events';
 import { prepareImage } from '@/lib/images';
@@ -35,7 +35,7 @@ const noSubscription = () => () => {};
 /** "CST (America/Chicago)", for the zone in effect at the chosen start. */
 function zoneLabel(timezone: string, startsAt: string) {
   const at = startsAt ? zonedInputToIso(startsAt, timezone) : null;
-  return `${timeZoneAbbr(timezone, at ? new Date(at) : undefined)} (${timezone.replace(/_/g, ' ')})`;
+  return timeZoneLabel(timezone, at ? new Date(at) : undefined);
 }
 
 /**
