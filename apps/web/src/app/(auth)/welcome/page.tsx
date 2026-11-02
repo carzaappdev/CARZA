@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { getGarage } from '@carza/db';
 import { WelcomeFlow } from '@/components/onboarding/welcome-flow';
 import { requireUser } from '@/lib/auth';
@@ -13,13 +14,16 @@ export const metadata: Metadata = { title: 'Welcome' };
 export default async function WelcomePage() {
   const user = await requireUser('/welcome');
   const supabase = await createClient();
+  const { data: home } = await supabase
+    .from('profile_private')
+    .select('postal_code, onboarded_at')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  // Setup is a one-time thing: once it's done (or skipped through), go to the feed.
+  if (home?.onboarded_at) redirect('/');
   // Came from an invite link: follow whoever sent it (only works once, in an account's first week).
   const ref = (await cookies()).get(INVITE_COOKIE)?.value;
   if (ref && validUsername(ref)) await supabase.rpc('accept_invite', { p_username: ref });
-  const [garage, catalog, { data: home }] = await Promise.all([
-    getGarage(supabase, user.id),
-    getCatalog(),
-    supabase.from('profile_private').select('postal_code').eq('user_id', user.id).maybeSingle(),
-  ]);
+  const [garage, catalog] = await Promise.all([getGarage(supabase, user.id), getCatalog()]);
   return <WelcomeFlow garage={garage} catalog={catalog} postalCode={home?.postal_code ?? ''} />;
 }
