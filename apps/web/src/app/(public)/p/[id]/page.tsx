@@ -10,6 +10,7 @@ import { Composer } from '@/components/feed/composer';
 import { PostCard } from '@/components/feed/post-card';
 import { Button } from '@/components/ui/button';
 import { getUser } from '@/lib/auth';
+import { publicStorageUrl } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/viewer';
 
@@ -25,9 +26,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await loadPost((await params).id);
   if (!post) return { title: 'Post not found' };
   const text = post.body || 'Photo';
+  const title = `${post.author.display_name}: “${text.length > 60 ? `${text.slice(0, 57)}…` : text}”`;
+  const description = post.body.slice(0, 200) || undefined;
+  const photo = post.photos[0];
   return {
-    title: `${post.author.display_name}: “${text.length > 60 ? `${text.slice(0, 57)}…` : text}”`,
-    description: post.body.slice(0, 200) || undefined,
+    title,
+    description,
+    // A photo post previews with its first photo; text posts keep the site card.
+    ...(photo && {
+      openGraph: {
+        title,
+        description,
+        type: 'article',
+        images: [
+          {
+            url: publicStorageUrl('post-photos', photo.path),
+            width: photo.width,
+            height: photo.height,
+          },
+        ],
+      },
+    }),
   };
 }
 

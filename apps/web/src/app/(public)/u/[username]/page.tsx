@@ -18,6 +18,7 @@ import { UserAvatar } from '@/components/feed/user-avatar';
 import { ShareButton } from '@/components/listings/share-button';
 import { Button } from '@/components/ui/button';
 import { getUser, isAdmin } from '@/lib/auth';
+import { publicStorageUrl } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 
@@ -35,9 +36,21 @@ const loadProfile = cache(async (username: string) => {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await loadProfile((await params).username);
   if (!profile) return { title: 'Profile not found' };
+  const title = `${profile.display_name} (@${profile.username})`;
+  const description = profile.bio ?? `${profile.display_name} is on Carza.`;
   return {
-    title: `${profile.display_name} (@${profile.username})`,
-    description: profile.bio ?? undefined,
+    title,
+    description,
+    ...(profile.avatar_path && {
+      openGraph: {
+        title,
+        description,
+        type: 'profile',
+        username: profile.username,
+        images: [publicStorageUrl('avatars', profile.avatar_path)],
+      },
+      twitter: { card: 'summary' },
+    }),
   };
 }
 
