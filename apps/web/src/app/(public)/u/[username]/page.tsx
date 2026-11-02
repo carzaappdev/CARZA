@@ -14,10 +14,12 @@ import { GarageShowcase } from '@/components/garage/garage-showcase';
 import { SafetyMenu } from '@/components/safety/safety-menu';
 import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
+import { RichText } from '@/components/feed/rich-text';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { ShareButton } from '@/components/listings/share-button';
 import { Button } from '@/components/ui/button';
 import { getUser, isAdmin } from '@/lib/auth';
+import { publicStorageUrl } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 
@@ -35,9 +37,21 @@ const loadProfile = cache(async (username: string) => {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await loadProfile((await params).username);
   if (!profile) return { title: 'Profile not found' };
+  const title = `${profile.display_name} (@${profile.username})`;
+  const description = profile.bio ?? `${profile.display_name} is on Carza.`;
   return {
-    title: `${profile.display_name} (@${profile.username})`,
-    description: profile.bio ?? undefined,
+    title,
+    description,
+    ...(profile.avatar_path && {
+      openGraph: {
+        title,
+        description,
+        type: 'profile',
+        username: profile.username,
+        images: [publicStorageUrl('avatars', profile.avatar_path)],
+      },
+      twitter: { card: 'summary' },
+    }),
   };
 }
 
@@ -50,6 +64,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const user = await getUser();
   const viewerId = user?.id ?? null;
   const isOwn = viewerId === profile.id;
+  const base = `/u/${profile.username}`;
   const supabase = await createClient();
   const [posts, garage, admin, invites] = await Promise.all([
     getProfilePosts(supabase, profile.id, tab, viewerId),
@@ -57,8 +72,6 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     viewerId && !isOwn ? isAdmin() : false,
     isOwn ? supabase.rpc('my_invite_count').then((r) => r.data ?? 0) : 0,
   ]);
-  const base = `/u/${profile.username}`;
-
   return (
     <div className="mx-auto w-full max-w-[640px] flex-1 sm:border-x">
       <header className="flex flex-col gap-4 px-4 pt-6 pb-4">
@@ -68,7 +81,14 @@ export default async function ProfilePage({ params, searchParams }: Props) {
               <span className="truncate">{profile.display_name}</span>
               <OfficialBadge official={profile.official} className="size-6" />
             </h1>
-            <p className="text-muted-foreground truncate">@{profile.username}</p>
+            <p className="text-muted-foreground flex min-w-0 items-center gap-2">
+              <span className="truncate">@{profile.username}</span>
+              {profile.followsViewer ? (
+                <span className="bg-muted text-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium">
+                  Follows you
+                </span>
+              ) : null}
+            </p>
           </div>
           <div className="flex items-start gap-1">
             <UserAvatar name={profile.display_name} path={profile.avatar_path} large />
@@ -91,25 +111,33 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <FeatureToggle userId={profile.id} featured={profile.featured_at !== null} />
         ) : null}
         {profile.bio ? (
-          <p className="text-[15px] leading-[1.4] whitespace-pre-wrap">{profile.bio}</p>
+          <p className="text-[15px] leading-[1.4] break-words whitespace-pre-wrap">
+            <RichText text={profile.bio} />
+          </p>
         ) : null}
         <GarageShowcase cars={garage} />
-        <p className="text-muted-foreground text-sm">
-          <span className="text-foreground font-semibold tabular-nums">
-            {formatCount(profile.followerCount)}
-          </span>{' '}
-          {profile.followerCount === 1 ? 'follower' : 'followers'}
-          <span aria-hidden> · </span>
-          <span className="text-foreground font-semibold tabular-nums">
-            {formatCount(profile.followingCount)}
-          </span>{' '}
-          following
+        <p className="text-muted-foreground flex flex-wrap items-center gap-x-1 text-sm">
+          <Link href={`${base}/followers` as Route} className="hover:underline">
+            <span className="text-foreground font-semibold tabular-nums">
+              {formatCount(profile.followerCount)}
+            </span>{' '}
+            {profile.followerCount === 1 ? 'follower' : 'followers'}
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href={`${base}/following` as Route} className="hover:underline">
+            <span className="text-foreground font-semibold tabular-nums">
+              {formatCount(profile.followingCount)}
+            </span>{' '}
+            following
+          </Link>
           {profile.city ? (
             <>
-              <span aria-hidden> · </span>
-              {profile.region ? `${profile.city}, ${profile.region}` : profile.city}
+              <span aria-hidden>·</span>
+              <span>{profile.region ? `${profile.city}, ${profile.region}` : profile.city}</span>
             </>
           ) : null}
+          <span aria-hidden>·</span>
+          <span>Joined {joinedLabel(profile.created_at)}</span>
         </p>
         {isOwn ? (
           <div className="grid grid-cols-2 gap-2">
@@ -132,6 +160,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <FollowButton
             userId={profile.id}
             following={profile.viewerFollows}
+            followsYou={profile.followsViewer}
             signedIn={viewerId !== null}
             className="w-full rounded-xl"
           />
@@ -184,3 +213,6 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     </div>
   );
 }
+
+const joinedLabel = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });

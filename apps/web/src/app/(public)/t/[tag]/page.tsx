@@ -4,6 +4,7 @@ import { HashIcon } from 'lucide-react';
 import { getTagPosts } from '@carza/db';
 import { normalizeTag } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
+import { Composer } from '@/components/feed/composer';
 import { PostCard } from '@/components/feed/post-card';
 import { createClient } from '@/lib/supabase/server';
 import { getViewer } from '@/lib/viewer';
@@ -36,6 +37,9 @@ export default async function TagPage({ params }: Props) {
           </p>
         </div>
       </header>
+      {viewer ? (
+        <Composer viewer={viewer} defaultBody={`#${tag} `} placeholder={`Post to #${tag}…`} />
+      ) : null}
       {posts.length ? (
         posts.map((post) => (
           <PostCard key={post.id} post={post} viewerId={viewer?.id ?? null} showReplyContext />
@@ -45,7 +49,7 @@ export default async function TagPage({ params }: Props) {
           <EmptyState
             Icon={HashIcon}
             title="No posts yet"
-            body={`Be the first: add #${tag} to a post.`}
+            body={`Be the first to post with #${tag}.`}
           />
         </div>
       )}

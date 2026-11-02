@@ -21,6 +21,7 @@ export default async function NewEventPage() {
           description: '',
           startsAt: null,
           endsAt: null,
+          timezone: null,
           venueName: '',
           address: '',
           postalCode: zip,

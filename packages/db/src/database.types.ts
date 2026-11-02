@@ -1599,7 +1599,8 @@ export type Database = {
         | 'reel_comment'
         | 'event_rsvp'
         | 'event_reminder'
-        | 'event_cancelled';
+        | 'event_cancelled'
+        | 'event_updated';
       report_reason: 'scam' | 'spam' | 'offensive' | 'misleading' | 'stolen' | 'other';
       report_status: 'open' | 'reviewing' | 'resolved' | 'dismissed';
       report_target: 'listing' | 'user' | 'message' | 'dealership' | 'post' | 'reel' | 'event';
@@ -1754,6 +1755,7 @@ export const Constants = {
         'event_rsvp',
         'event_reminder',
         'event_cancelled',
+        'event_updated',
       ],
       report_reason: ['scam', 'spam', 'offensive', 'misleading', 'stolen', 'other'],
       report_status: ['open', 'reviewing', 'resolved', 'dismissed'],

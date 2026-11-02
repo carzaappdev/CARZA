@@ -21,6 +21,8 @@ export type ReelView = {
   createdAt: string;
   author: PostAuthor;
   liked: boolean;
+  /** Whether the viewer follows the author (false for guests and their own reels). */
+  following: boolean;
 };
 
 type ReelRow = {
@@ -39,17 +41,28 @@ type ReelRow = {
 
 async function hydrate(client: TypedClient, rows: ReelRow[], viewerId: string | null) {
   let liked = new Set<string>();
+  let followed = new Set<string>();
   if (viewerId && rows.length) {
-    const { data, error } = await client
-      .from('reel_likes')
-      .select('reel_id')
-      .eq('user_id', viewerId)
-      .in(
-        'reel_id',
-        rows.map((r) => r.id),
-      );
-    if (error) throw error;
-    liked = new Set(data.map((l) => l.reel_id));
+    const authorIds = [...new Set(rows.flatMap((r) => (r.author ? [r.author.id] : [])))];
+    const [likes, follows] = await Promise.all([
+      client
+        .from('reel_likes')
+        .select('reel_id')
+        .eq('user_id', viewerId)
+        .in(
+          'reel_id',
+          rows.map((r) => r.id),
+        ),
+      client
+        .from('follows')
+        .select('followee_id')
+        .eq('follower_id', viewerId)
+        .in('followee_id', authorIds),
+    ]);
+    if (likes.error) throw likes.error;
+    if (follows.error) throw follows.error;
+    liked = new Set(likes.data.map((l) => l.reel_id));
+    followed = new Set(follows.data.map((f) => f.followee_id));
   }
   return rows.flatMap((r): ReelView[] =>
     r.author
@@ -67,6 +80,7 @@ async function hydrate(client: TypedClient, rows: ReelRow[], viewerId: string | 
             createdAt: r.created_at,
             author: r.author,
             liked: liked.has(r.id),
+            following: followed.has(r.author.id),
           },
         ]
       : [],
