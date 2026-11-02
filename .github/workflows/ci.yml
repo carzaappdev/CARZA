@@ -88,6 +88,9 @@ jobs:
           echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$(jq -r '.PUBLISHABLE_KEY // .ANON_KEY' <<<"$status")" >> "$GITHUB_ENV"
       - run: pnpm build
       - run: pnpm test:e2e
+      - name: Show what the page looked like when a test failed
+        if: failure()
+        run: find apps/web/test-results -name error-context.md -exec sh -c 'echo "::group::$1"; cat "$1"; echo "::endgroup::"' _ {} \;
       - if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
