@@ -16,9 +16,19 @@ import {
 const noop = () => () => {};
 
 /** Settings → Notifications: alerts on this device, and which kinds to send. */
-export function PushSettings({ initialMuted }: { initialMuted: PushCategory[] }) {
+export function PushSettings({
+  publicKey,
+  initialMuted,
+}: {
+  publicKey: string | null;
+  initialMuted: PushCategory[];
+}) {
   // Browser-only facts: unknown (null) during the server render.
-  const support = useSyncExternalStore<PushSupport | null>(noop, pushSupport, () => null);
+  const support = useSyncExternalStore<PushSupport | null>(
+    noop,
+    () => pushSupport(publicKey),
+    () => null,
+  );
   const [enabled, setEnabled] = useState(false);
   const [muted, setMuted] = useState(initialMuted);
   const [pending, startTransition] = useTransition();
@@ -32,7 +42,7 @@ export function PushSettings({ initialMuted }: { initialMuted: PushCategory[] })
 
   const toggleDevice = (on: boolean) =>
     startTransition(async () => {
-      const error = await (on ? enablePush() : disablePush());
+      const error = await (on ? enablePush(publicKey) : disablePush());
       if (error) toast.error(error);
       else setEnabled(on);
     });

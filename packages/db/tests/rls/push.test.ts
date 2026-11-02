@@ -84,6 +84,32 @@ describe('push subscriptions', () => {
   });
 });
 
+describe('push signing keys', () => {
+  it('are never readable or writable by users', async () => {
+    await admin
+      .from('push_vapid_keys')
+      .upsert({ id: 1, public_key: 'B'.repeat(87), private_key: 'p'.repeat(43) });
+    for (const client of [anon(), alice.client]) {
+      const { data } = await client.from('push_vapid_keys').select('private_key');
+      expect(data ?? []).toHaveLength(0);
+      const { error } = await client
+        .from('push_vapid_keys')
+        .update({ private_key: 'x'.repeat(43) })
+        .eq('id', 1);
+      expect(error).not.toBeNull();
+    }
+    await admin.from('push_vapid_keys').delete().eq('id', 1);
+  });
+
+  it("can't be marked pushed by users", async () => {
+    const { error } = await alice.client
+      .from('notifications')
+      .update({ pushed_at: new Date().toISOString() })
+      .eq('user_id', alice.id);
+    expect(error).not.toBeNull();
+  });
+});
+
 describe('push preferences', () => {
   it('are owner-only and limited to notification types', async () => {
     const { error } = await alice.client

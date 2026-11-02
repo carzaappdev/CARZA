@@ -9,7 +9,7 @@ import { currentSubscription, enablePush, pushSupport } from '@/lib/push-client'
 const DISMISSED = 'carza:push-prompt-dismissed';
 
 /** A one-tap “turn on alerts” card at the top of Notifications, until it's on or dismissed. */
-export function PushPrompt() {
+export function PushPrompt({ publicKey }: { publicKey: string | null }) {
   const [show, setShow] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -19,11 +19,11 @@ export function PushPrompt() {
     } catch {
       // Storage blocked: still offer it.
     }
-    if (pushSupport() !== 'supported' || Notification.permission === 'denied') return;
+    if (pushSupport(publicKey) !== 'supported' || Notification.permission === 'denied') return;
     void currentSubscription().then((sub) => {
       if (!sub || Notification.permission !== 'granted') setShow(true);
     });
-  }, []);
+  }, [publicKey]);
 
   if (!show) return null;
 
@@ -45,7 +45,7 @@ export function PushPrompt() {
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const error = await enablePush();
+            const error = await enablePush(publicKey);
             if (error) toast.error(error);
             else {
               toast.success('Alerts are on.');

@@ -6,6 +6,7 @@ import { PushSettings } from '@/components/pwa/push-settings';
 import { BlockedList } from '@/components/safety/blocked-list';
 import { ThemePicker } from '@/components/theme/theme-toggle';
 import { requireUser } from '@/lib/auth';
+import { vapidPublicKey } from '@/lib/push';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Edit profile' };
@@ -13,19 +14,23 @@ export const metadata: Metadata = { title: 'Edit profile' };
 export default async function SettingsPage() {
   const user = await requireUser('/account/settings');
   const supabase = await createClient();
-  const [{ data: profile }, { data: blocks }, { data: privateProfile }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('display_name, username, bio, avatar_path')
-      .eq('id', user.id)
-      .single(),
-    supabase
-      .from('blocks')
-      .select('profile:profiles!blocks_blocked_id_fkey ( id, username, display_name, avatar_path )')
-      .eq('blocker_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase.from('profile_private').select('push_muted').eq('user_id', user.id).maybeSingle(),
-  ]);
+  const [{ data: profile }, { data: blocks }, { data: privateProfile }, publicKey] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('display_name, username, bio, avatar_path')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('blocks')
+        .select(
+          'profile:profiles!blocks_blocked_id_fkey ( id, username, display_name, avatar_path )',
+        )
+        .eq('blocker_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase.from('profile_private').select('push_muted').eq('user_id', user.id).maybeSingle(),
+      vapidPublicKey(),
+    ]);
   return (
     <>
       <PageHeader title="Edit profile" description="This is how people see you on Carza." />
@@ -41,7 +46,10 @@ export default async function SettingsPage() {
         <h2 id="alerts-heading" className="font-semibold">
           Notifications
         </h2>
-        <PushSettings initialMuted={mutedPushCategories(privateProfile?.push_muted ?? [])} />
+        <PushSettings
+          publicKey={publicKey}
+          initialMuted={mutedPushCategories(privateProfile?.push_muted ?? [])}
+        />
       </section>
       <section aria-label="Display" className="border-t pt-6">
         <ThemePicker />

@@ -1,9 +1,8 @@
-import { clientEnv } from '@/env/client';
 import { removePushSubscription, savePushSubscription } from '@/lib/actions/push';
 
 /**
  * Where this browser stands on push alerts:
- * - unsupported: no push here (old browser, in-app browser, or the keys aren't configured)
+ * - unsupported: no push here (old browser, in-app browser, or no key on this deployment)
  * - needs-install: iPhone/iPad Safari, which only allows push once Carza is on the Home Screen
  * - supported: can ask
  */
@@ -24,8 +23,8 @@ export function isIos() {
   );
 }
 
-export function pushSupport(): PushSupport {
-  if (!clientEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY || !('serviceWorker' in navigator)) {
+export function pushSupport(publicKey: string | null): PushSupport {
+  if (!publicKey || !('serviceWorker' in navigator)) {
     return 'unsupported';
   }
   if (isIos() && !isStandalone()) return 'needs-install';
@@ -50,8 +49,7 @@ function keyBytes(base64url: string) {
 }
 
 /** Asks for permission (must run from a tap) and saves this device. Returns an error message or null. */
-export async function enablePush(): Promise<string | null> {
-  const key = clientEnv.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+export async function enablePush(key: string | null): Promise<string | null> {
   if (!key) return 'Alerts aren’t available yet.';
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {

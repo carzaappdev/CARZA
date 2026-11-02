@@ -10,11 +10,6 @@ export const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
   NEXT_PUBLIC_SITE_URL: z.url(),
-  // Web push (VAPID) public key. Optional: without it the app simply doesn't offer push alerts.
-  NEXT_PUBLIC_VAPID_PUBLIC_KEY: z
-    .string()
-    .regex(/^[A-Za-z0-9_-]{87}$/)
-    .optional(),
 });
 
 export const serverSchema = z.object({
@@ -24,13 +19,6 @@ export const serverSchema = z.object({
   // for production in the same change that adds the first sender.
   RESEND_API_KEY: z.string().startsWith('re_').optional(),
   EMAIL_FROM: z.string().min(3).optional(),
-  // Web push: the VAPID private key that signs pushes, and the secret the database sends to the
-  // dispatch route (also stored in Supabase Vault as 'push_dispatch_secret'). Optional: no push without them.
-  VAPID_PRIVATE_KEY: z
-    .string()
-    .regex(/^[A-Za-z0-9_-]{43}$/)
-    .optional(),
-  PUSH_DISPATCH_SECRET: z.string().min(32).optional(),
 });
 
 /** Validates everything at once and throws a readable error listing every problem. */

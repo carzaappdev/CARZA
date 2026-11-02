@@ -710,6 +710,7 @@ export type Database = {
           created_at: string;
           data: NonNullable<Json>;
           id: string;
+          pushed_at: string | null;
           read_at: string | null;
           type: Database['public']['Enums']['notification_type'];
           user_id: string;
@@ -719,6 +720,7 @@ export type Database = {
           created_at?: string;
           data?: NonNullable<Json>;
           id?: string;
+          pushed_at?: string | null;
           read_at?: string | null;
           type: Database['public']['Enums']['notification_type'];
           user_id: string;
@@ -727,6 +729,7 @@ export type Database = {
           created_at?: string;
           data?: NonNullable<Json>;
           id?: string;
+          pushed_at?: string | null;
           read_at?: string | null;
           type?: Database['public']['Enums']['notification_type'];
           user_id?: string;
@@ -999,6 +1002,28 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      push_vapid_keys: {
+        Row: {
+          created_at: string;
+          id: number;
+          private_key: string;
+          public_key: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: number;
+          private_key: string;
+          public_key: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: number;
+          private_key?: string;
+          public_key?: string;
+        };
+        Relationships: [];
       };
       reel_likes: {
         Row: {
