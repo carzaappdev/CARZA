@@ -2,8 +2,8 @@ import type { Metadata, Route } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { MessagesSquareIcon } from 'lucide-react';
-import { getProfile, getGarage, getProfilePosts } from '@carza/db';
+import { ClapperboardIcon, MessagesSquareIcon } from 'lucide-react';
+import { getProfile, getGarage, getProfilePosts, getProfileReels } from '@carza/db';
 import { formatCount } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { FollowButton } from '@/components/feed/follow-button';
@@ -15,6 +15,7 @@ import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
 import { RichText } from '@/components/feed/rich-text';
 import { UserAvatar } from '@/components/feed/user-avatar';
+import { ProfileReelGrid } from '@/components/reels/profile-reel-grid';
 import { ShareButton } from '@/components/listings/share-button';
 import { Button } from '@/components/ui/button';
 import { getUser, isAdmin } from '@/lib/auth';
@@ -59,14 +60,16 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const profile = await loadProfile(username);
   if (!profile) notFound();
 
-  const tab = (await searchParams).tab === 'replies' ? 'replies' : 'posts';
+  const tabParam = (await searchParams).tab;
+  const tab = TABS.find((t) => t !== 'posts' && t === tabParam) ?? 'posts';
   const user = await getUser();
   const viewerId = user?.id ?? null;
   const isOwn = viewerId === profile.id;
   const base = `/u/${profile.username}`;
   const supabase = await createClient();
-  const [posts, garage, admin, invites] = await Promise.all([
-    getProfilePosts(supabase, profile.id, tab, viewerId),
+  const [posts, reels, garage, admin, invites] = await Promise.all([
+    tab === 'reels' ? [] : getProfilePosts(supabase, profile.id, tab, viewerId),
+    tab === 'reels' ? getProfileReels(supabase, profile.id) : [],
     getGarage(supabase, profile.id),
     viewerId && !isOwn ? isAdmin() : false,
     isOwn ? supabase.rpc('my_invite_count').then((r) => r.data ?? 0) : 0,
@@ -165,11 +168,11 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         )}
       </header>
 
-      <nav aria-label="Profile sections" className="grid grid-cols-2 border-b">
-        {(['posts', 'replies'] as const).map((t) => (
+      <nav aria-label="Profile sections" className="grid grid-cols-3 border-b">
+        {TABS.map((t) => (
           <Link
             key={t}
-            href={(t === 'posts' ? base : `${base}?tab=replies`) as Route}
+            href={(t === 'posts' ? base : `${base}?tab=${t}`) as Route}
             aria-current={tab === t ? 'page' : undefined}
             className={cn(
               'focus-visible:ring-ring/50 relative flex h-12 items-center justify-center text-[15px] font-semibold capitalize outline-none focus-visible:ring-[3px] focus-visible:ring-inset',
@@ -184,7 +187,26 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         ))}
       </nav>
 
-      {posts.length > 0 ? (
+      {tab === 'reels' ? (
+        reels.length > 0 ? (
+          <ProfileReelGrid reels={reels} />
+        ) : (
+          <div className="px-4 py-8">
+            <EmptyState
+              Icon={ClapperboardIcon}
+              title="No reels yet"
+              body={isOwn ? 'Short videos you post show up here.' : undefined}
+              action={
+                isOwn ? (
+                  <Button asChild className="rounded-full">
+                    <Link href="/reels/new">Post a reel</Link>
+                  </Button>
+                ) : undefined
+              }
+            />
+          </div>
+        )
+      ) : posts.length > 0 ? (
         <ul>
           {posts.map((post) => (
             <li key={post.id}>
@@ -211,6 +233,8 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     </div>
   );
 }
+
+const TABS = ['posts', 'replies', 'reels'] as const;
 
 const joinedLabel = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });
