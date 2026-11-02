@@ -11,7 +11,7 @@ const optionalText = (max: number, message: string) =>
     .nullable();
 
 /** Host or edit an event. Times are instants (ISO with offset); `timezone` is where the event happens. */
-export const eventFormSchema = z
+const eventFields = z
   .object({
     title: z
       .string()
@@ -32,10 +32,6 @@ export const eventFormSchema = z
     capacity: z.int().min(1, 'At least 1.').max(10000, 'Up to 10,000.').nullable(),
     coverPath: imagePath.nullable(),
   })
-  .refine((e) => new Date(e.startsAt).getTime() > Date.now(), {
-    message: 'The start time has already passed.',
-    path: ['startsAt'],
-  })
   .refine((e) => !e.endsAt || new Date(e.endsAt) > new Date(e.startsAt), {
     message: 'The end must be after the start.',
     path: ['endsAt'],
@@ -45,8 +41,15 @@ export const eventFormSchema = z
       !e.endsAt || new Date(e.endsAt).getTime() - new Date(e.startsAt).getTime() <= 7 * 86_400_000,
     { message: 'Events can run up to 7 days.', path: ['endsAt'] },
   );
+
+/** A new event must start in the future. */
+export const eventFormSchema = eventFields.refine(
+  (e) => new Date(e.startsAt).getTime() > Date.now(),
+  { message: 'The start time has already passed.', path: ['startsAt'] },
+);
 export type EventFormInput = z.input<typeof eventFormSchema>;
 
 export const eventIdSchema = z.object({ eventId: z.guid() });
 export const setRsvpSchema = z.object({ eventId: z.guid(), going: z.boolean() });
-export const updateEventSchema = z.object({ eventId: z.guid(), event: eventFormSchema });
+/** Edits may keep a start time that has passed (the meet is under way); the database refuses moving one into the past. */
+export const updateEventSchema = z.object({ eventId: z.guid(), event: eventFields });

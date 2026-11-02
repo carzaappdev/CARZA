@@ -14,6 +14,7 @@ export * from './logic/search-chips';
 export * from './schemas/listing';
 export * from './schemas/post';
 export * from './logic/time';
+export * from './logic/event-time';
 export * from './schemas/event';
 export * from './schemas/reel';
 export * from './schemas/safety';

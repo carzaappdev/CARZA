@@ -2,10 +2,10 @@
 
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
-import { useRef, useState, useTransition } from 'react';
+import { useRef, useState, useSyncExternalStore, useTransition } from 'react';
 import { ImagePlusIcon, Loader2Icon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
-import { LIMITS } from '@carza/shared';
+import { LIMITS, isoToZonedInput, timeZoneAbbr, zonedInputToIso } from '@carza/shared';
 import { Button } from '@/components/ui/button';
 import { createEvent, updateEvent } from '@/lib/actions/events';
 import { prepareImage } from '@/lib/images';
@@ -18,6 +18,8 @@ export type EventFormValues = {
   description: string;
   startsAt: string | null;
   endsAt: string | null;
+  /** The event's timezone when editing; new events use the device's. */
+  timezone: string | null;
   venueName: string;
   address: string;
   postalCode: string;
@@ -28,21 +30,31 @@ export type EventFormValues = {
 const inputClass =
   'bg-background focus-visible:ring-ring/50 aria-[invalid=true]:border-destructive h-11 w-full rounded-lg border px-3 text-[15px] outline-none focus-visible:ring-[3px]';
 
-/** ISO instant → the browser's local "YYYY-MM-DDTHH:mm" for a datetime-local input. */
-function toLocalInput(iso: string | null) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const noSubscription = () => () => {};
+
+/** "CST (America/Chicago)", for the zone in effect at the chosen start. */
+function zoneLabel(timezone: string, startsAt: string) {
+  const at = startsAt ? zonedInputToIso(startsAt, timezone) : null;
+  return `${timeZoneAbbr(timezone, at ? new Date(at) : undefined)} (${timezone.replace(/_/g, ' ')})`;
 }
 
-/** Host or edit an event. Times are entered in the host's own timezone, which is saved with the event. */
+/**
+ * Host or edit an event. Times are typed as local time where the event happens: the device's timezone for
+ * a new event, the event's own when editing (so editing from another state doesn't shift it).
+ */
 export function EventForm({ eventId, initial }: { eventId?: string; initial: EventFormValues }) {
   const router = useRouter();
+  // The device's timezone is only known in the browser (null while server rendering).
+  const deviceTimezone = useSyncExternalStore(
+    noSubscription,
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone,
+    () => null,
+  );
+  const timezone = initial.timezone ?? deviceTimezone;
   const [v, setV] = useState({
     ...initial,
-    startsAt: toLocalInput(initial.startsAt),
-    endsAt: toLocalInput(initial.endsAt),
+    startsAt: initial.timezone ? isoToZonedInput(initial.startsAt, initial.timezone) : '',
+    endsAt: initial.timezone ? isoToZonedInput(initial.endsAt, initial.timezone) : '',
   });
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -71,12 +83,13 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
   }
 
   function submit() {
+    const tz = timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
     const event = {
       title: v.title,
       description: v.description,
-      startsAt: v.startsAt ? new Date(v.startsAt).toISOString() : '',
-      endsAt: v.endsAt ? new Date(v.endsAt).toISOString() : null,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      startsAt: (v.startsAt && zonedInputToIso(v.startsAt, tz)) || '',
+      endsAt: (v.endsAt && zonedInputToIso(v.endsAt, tz)) || null,
+      timezone: tz,
       venueName: v.venueName,
       address: v.address,
       postalCode: v.postalCode,
@@ -215,6 +228,11 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
             onChange={(e) => set({ endsAt: e.target.value })}
           />,
         )}
+        {timezone ? (
+          <p className="text-muted-foreground -mt-3 text-sm sm:col-span-2">
+            Times are in {zoneLabel(timezone, v.startsAt)}.
+          </p>
+        ) : null}
       </div>
 
       {field(
