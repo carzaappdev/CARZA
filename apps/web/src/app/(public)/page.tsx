@@ -75,6 +75,7 @@ export default async function FeedPage({
 
         <FeedList
           key={`${feed}:${initial.posts[0]?.id ?? 'empty'}:${initial.posts.length}`}
+          feed={feed}
           initial={initial}
           viewer={viewer}
           empty={
