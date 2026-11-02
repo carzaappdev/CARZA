@@ -14,6 +14,7 @@ export const SOCIAL_NOTIFICATION_TYPES = [
   'event_rsvp',
   'event_reminder',
   'event_cancelled',
+  'event_updated',
 ] as const satisfies readonly NotificationType[];
 
 /** The `data` the database writes on social notifications. Anything unexpected is dropped. */
@@ -79,6 +80,13 @@ export function describeNotification(
       return data.event_id
         ? {
             text: `cancelled ${data.snippet ?? 'an event you were going to'}`,
+            href: `/events/${data.event_id}`,
+          }
+        : null;
+    case 'event_updated':
+      return data.event_id
+        ? {
+            text: `changed the time or place of ${data.snippet ?? 'an event you’re going to'}`,
             href: `/events/${data.event_id}`,
           }
         : null;

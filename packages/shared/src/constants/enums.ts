@@ -56,6 +56,7 @@ export const NOTIFICATION_TYPES = [
   'event_rsvp',
   'event_reminder',
   'event_cancelled',
+  'event_updated',
 ] as const;
 export const REPORT_TARGETS = [
   'listing',
