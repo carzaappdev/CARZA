@@ -3,6 +3,11 @@ import { expect, test, type Page } from '@playwright/test';
 // Accounts from supabase/seed.sql. They exist only in the local stack.
 const PASSWORD = 'password1234';
 
+// The one-time cookie notice floats over the bottom of the page; mark it seen so it can't catch clicks.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('carza:cookie-notice', 'ok'));
+});
+
 async function signIn(page: Page, email: string) {
   await page.goto('/sign-in');
   await page.getByLabel('Email').fill(email);

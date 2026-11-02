@@ -2,7 +2,7 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { LogOutIcon, SettingsIcon, UserIcon } from 'lucide-react';
+import { FileTextIcon, LogOutIcon, SettingsIcon, ShieldAlertIcon, UserIcon } from 'lucide-react';
 import { signOut } from '@/app/auth/actions';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { Button } from '@/components/ui/button';
@@ -46,8 +46,20 @@ export function AccountMenu({ viewer }: { viewer: Viewer }) {
               <SettingsIcon /> Settings
             </Link>
           </DropdownMenuItem>
+          {viewer.isAdmin ? (
+            <DropdownMenuItem asChild>
+              <Link href="/account/reports">
+                <ShieldAlertIcon /> Reports
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/terms">
+            <FileTextIcon /> Terms &amp; privacy
+          </Link>
+        </DropdownMenuItem>
         <form action={signOut}>
           <DropdownMenuItem asChild>
             <button type="submit" className="w-full">

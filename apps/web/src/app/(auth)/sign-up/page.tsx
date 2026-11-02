@@ -40,6 +40,21 @@ export default async function SignUpPage({ searchParams }: { searchParams: AuthS
         </div>
         <OAuthButtons next={next} providers={await enabledOAuthProviders()} />
       </SignUpForm>
+      <p className="text-muted-foreground text-xs leading-relaxed">
+        By creating an account you agree to our{' '}
+        <Link href="/terms" className="text-foreground underline underline-offset-4">
+          Terms
+        </Link>{' '}
+        and{' '}
+        <Link href="/guidelines" className="text-foreground underline underline-offset-4">
+          Community Guidelines
+        </Link>
+        , and confirm you are at least 13. See how we handle your data in our{' '}
+        <Link href="/privacy" className="text-foreground underline underline-offset-4">
+          Privacy Policy
+        </Link>
+        .
+      </p>
       <p className="text-muted-foreground text-sm">
         Already have an account?{' '}
         <Link
