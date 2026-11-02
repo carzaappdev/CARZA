@@ -32,6 +32,9 @@ describe('describeNotification', () => {
       describeNotification('event_reminder', { event_id: id, snippet: 'Cars & Coffee' }, null)
         ?.text,
     ).toBe('Cars & Coffee starts soon. See you there!');
+    expect(
+      describeNotification('event_updated', { event_id: id, snippet: 'Night cruise' }, actor),
+    ).toEqual({ text: 'changed the time or place of Night cruise', href: `/events/${id}` });
   });
   it('hides marketplace types and malformed data', () => {
     expect(describeNotification('new_message', {}, actor)).toBeNull();

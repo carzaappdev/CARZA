@@ -44,7 +44,7 @@ export function AccountMenu({ viewer }: { viewer: Viewer }) {
           ) : null}
           <DropdownMenuItem asChild>
             <Link href="/account/settings">
-              <SettingsIcon /> Edit profile
+              <SettingsIcon /> Settings
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>

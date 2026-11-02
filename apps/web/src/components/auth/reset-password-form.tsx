@@ -21,8 +21,10 @@ export function ResetPasswordForm() {
     setErrors({});
     setFormError(null);
     setPending(true);
-    // The link comes from the email template (supabase/templates/recovery.html) → /update-password.
-    const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email);
+    // Carza's template links to /auth/confirm → /update-password; redirectTo covers the default template.
+    const { error } = await createClient().auth.resetPasswordForEmail(parsed.data.email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/update-password&from=recovery`,
+    });
     setPending(false);
     // Rate limits are worth surfacing; anything else gets the neutral message (no account enumeration).
     if (error?.code?.startsWith('over_')) return setFormError(authErrorMessage(error.code));
@@ -32,7 +34,8 @@ export function ResetPasswordForm() {
   if (sent) {
     return (
       <FormMessage tone="success">
-        If an account exists for that email, we&apos;ve sent a link to reset your password.
+        If an account exists for that email, we&apos;ve sent a link to reset your password. It
+        expires in an hour, so open it soon (check spam if it isn&apos;t there in a minute).
       </FormMessage>
     );
   }

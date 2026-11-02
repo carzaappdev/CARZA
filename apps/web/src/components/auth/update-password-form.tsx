@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { authErrorMessage, fieldErrors, updatePasswordSchema } from '@carza/shared';
 import { createClient } from '@/lib/supabase/browser';
-import { Field, FormMessage, SubmitButton, useFocusFirstInvalid } from './fields';
+import { FormMessage, PasswordField, SubmitButton, useFocusFirstInvalid } from './fields';
 
 export function UpdatePasswordForm() {
   const router = useRouter();
@@ -35,18 +35,16 @@ export function UpdatePasswordForm() {
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
-      <Field
+      <PasswordField
         label="New password"
         name="password"
-        type="password"
         autoComplete="new-password"
         required
         error={errors.password}
       />
-      <Field
+      <PasswordField
         label="Confirm new password"
         name="confirmPassword"
-        type="password"
         autoComplete="new-password"
         required
         error={errors.confirmPassword}
