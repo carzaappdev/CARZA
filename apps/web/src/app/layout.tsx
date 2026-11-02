@@ -14,6 +14,8 @@ export const metadata: Metadata = {
   applicationName: 'Carza',
   description:
     'Share your ride, swipe through car reels and find meets, cruises and shows near you.',
+  openGraph: { type: 'website', siteName: 'Carza' },
+  twitter: { card: 'summary_large_image' },
 };
 
 export const viewport: Viewport = {

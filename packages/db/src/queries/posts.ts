@@ -275,3 +275,16 @@ export async function getProfile(client: TypedClient, username: string, viewerId
 }
 
 export type ProfileView = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
+
+/** How many of the first 1,000 "founding member" numbers are still free. */
+export async function getFoundingSpotsLeft(client: TypedClient) {
+  const { data, error } = await client
+    .from('profiles')
+    .select('founding_number')
+    .not('founding_number', 'is', null)
+    .order('founding_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return Math.max(0, 1000 - (data?.founding_number ?? 0));
+}
