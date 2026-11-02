@@ -16,7 +16,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:types": "supabase gen types typescript --local --schema public > packages/db/src/database.types.ts && prettier --write packages/db/src/database.types.ts",
-    "test:rls": "vitest run --project rls"
+    "test:rls": "vitest run --project rls",
+    "test:e2e": "pnpm --filter @carza/web test:e2e"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
