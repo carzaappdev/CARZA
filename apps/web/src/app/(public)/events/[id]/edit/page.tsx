@@ -28,6 +28,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
           description: event.description,
           startsAt: event.starts_at,
           endsAt: event.ends_at,
+          timezone: event.timezone,
           venueName: event.venue_name,
           address: event.address ?? '',
           postalCode: event.postal_code,

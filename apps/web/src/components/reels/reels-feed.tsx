@@ -3,7 +3,15 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ClapperboardIcon, PlusIcon, Volume2Icon, VolumeXIcon } from 'lucide-react';
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  ClapperboardIcon,
+  Loader2Icon,
+  PlusIcon,
+  Volume2Icon,
+  VolumeXIcon,
+} from 'lucide-react';
 import type { ReelsPage, ReelView } from '@carza/db';
 import { loadReelsPage } from '@/lib/actions/reels';
 import { ReelItem, type ReelViewer } from './reel-item';
@@ -26,8 +34,10 @@ export function ReelsFeed({
   const [next, setNext] = useState(initial.next);
   const [active, setActive] = useState(0);
   const [muted, setMuted] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
   const loading = useRef(false);
+  const swiped = useRef(false);
 
   // The reel that fills most of the screen is the active one.
   useEffect(() => {
@@ -47,38 +57,88 @@ export function ReelsFeed({
 
   // Fetch the next page while two reels remain.
   useEffect(() => {
-    if (!next || loading.current || active < reels.length - 3) return;
+    if (!next || loading.current || loadFailed || active < reels.length - 3) return;
     loading.current = true;
     void loadReelsPage(next).then((result) => {
       loading.current = false;
-      if (!result.ok) return;
+      if (!result.ok) {
+        setLoadFailed(true);
+        return;
+      }
       setReels((all) => {
         const seen = new Set(all.map((r) => r.id));
         return [...all, ...result.data.reels.filter((r) => !seen.has(r.id))];
       });
       setNext(result.data.next);
     });
-  }, [active, next, reels.length]);
+  }, [active, next, reels.length, loadFailed]);
 
-  // Arrow keys and j/k move between reels on desktop.
+  // Keep the address bar on the reel being watched, so a refresh or a copied link lands on it.
+  const activeId = reels[active]?.id;
+  useEffect(() => {
+    if (active > 0) swiped.current = true;
+    if (!activeId || !swiped.current) return;
+    window.history.replaceState(window.history.state, '', `/reels/${activeId}`);
+  }, [active, activeId]);
+
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+  }, [active]);
+
+  const step = useCallback((by: 1 | -1) => {
+    const el = scroller.current;
+    // Aim from the nearest reel, so quick repeated presses each move one reel.
+    if (el)
+      el.scrollTo({
+        top: (Math.round(el.scrollTop / el.clientHeight) + by) * el.clientHeight,
+        behavior: 'smooth',
+      });
+  }, []);
+
+  // Desktop keys, like TikTok: ↑/↓ (or k/j) move, space pauses, m mutes.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.target instanceof HTMLElement && e.target.closest('input, textarea, [role="menu"]'))
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (
+        e.target instanceof HTMLElement &&
+        e.target.closest('input, textarea, [contenteditable], [role="menu"], [role="dialog"]')
+      )
         return;
-      const step =
+      if (document.querySelector('[role="dialog"]')) return;
+      if (e.key === 'm') {
+        setMuted((m) => !m);
+        return;
+      }
+      if (e.key === ' ' && !(e.target instanceof HTMLButtonElement)) {
+        const video = scroller.current?.querySelector<HTMLVideoElement>(
+          `[data-index="${activeRef.current}"] video`,
+        );
+        if (!video) return;
+        e.preventDefault();
+        if (video.paused) void video.play().catch(() => undefined);
+        else video.pause();
+        return;
+      }
+      const by =
         e.key === 'ArrowDown' || e.key === 'j' ? 1 : e.key === 'ArrowUp' || e.key === 'k' ? -1 : 0;
-      if (!step || !scroller.current) return;
+      if (!by) return;
       e.preventDefault();
-      scroller.current.scrollBy({ top: step * scroller.current.clientHeight, behavior: 'smooth' });
+      step(by);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [step]);
 
   const remove = useCallback((id: string) => setReels((all) => all.filter((r) => r.id !== id)), []);
+  const followed = useCallback(
+    (authorId: string, following: boolean) =>
+      setReels((all) => all.map((r) => (r.author.id === authorId ? { ...r, following } : r))),
+    [],
+  );
 
   return (
-    <div className="relative mx-auto h-[calc(100dvh-7rem-env(safe-area-inset-bottom))] w-full bg-black md:h-[calc(100dvh-4rem)] md:max-w-[480px]">
+    <div className="relative mx-auto h-[calc(100dvh-3.5rem-env(safe-area-inset-bottom))] w-full bg-black md:h-[calc(100dvh-4rem)] md:max-w-[480px]">
       {reels.length === 0 ? (
         <div className="flex h-full flex-col items-center justify-center gap-4 px-8 text-center text-white">
           <span className="grid size-16 place-items-center rounded-2xl bg-white/10">
@@ -112,13 +172,79 @@ export function ReelsFeed({
                 upNext={i === active + 1}
                 muted={muted}
                 onDeleted={() => remove(reel.id)}
+                onFollowed={followed}
               />
             </div>
           ))}
+          <div
+            data-index={reels.length}
+            className="flex h-full snap-start snap-always flex-col items-center justify-center gap-4 px-8 text-center text-white"
+          >
+            {next && !loadFailed ? (
+              <Loader2Icon className="size-8 animate-spin text-white/70" aria-label="Loading" />
+            ) : next ? (
+              <>
+                <p className="text-white/80">Couldn’t load more reels.</p>
+                <button
+                  type="button"
+                  onClick={() => setLoadFailed(false)}
+                  className="h-11 rounded-full bg-white px-5 font-semibold text-black outline-none focus-visible:ring-[3px] focus-visible:ring-white/60"
+                >
+                  Try again
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="font-display text-2xl font-bold">You’re all caught up</h2>
+                <p className="max-w-xs text-white/70">
+                  That’s every reel so far. Got a clip? Post the next one.
+                </p>
+                <div className="flex gap-2">
+                  <Link
+                    href={createHref}
+                    className="h-11 rounded-full bg-white px-5 leading-11 font-semibold text-black outline-none focus-visible:ring-[3px] focus-visible:ring-white/60"
+                  >
+                    Post a reel
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => scroller.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="h-11 rounded-full border border-white/40 px-5 font-semibold outline-none focus-visible:ring-[3px] focus-visible:ring-white/60"
+                  >
+                    Back to top
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent p-3">
+      {/* Desktop: up/down buttons beside the player. */}
+      {reels.length > 0 ? (
+        <div className="absolute top-1/2 left-full ml-4 hidden -translate-y-1/2 flex-col gap-3 md:flex">
+          <button
+            type="button"
+            aria-label="Previous reel"
+            disabled={active === 0}
+            onClick={() => step(-1)}
+            className="bg-muted text-foreground hover:bg-accent focus-visible:ring-ring/50 grid size-12 place-items-center rounded-full outline-none focus-visible:ring-[3px] disabled:opacity-40"
+          >
+            <ChevronUpIcon className="size-6" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next reel"
+            disabled={active >= reels.length}
+            onClick={() => step(1)}
+            className="bg-muted text-foreground hover:bg-accent focus-visible:ring-ring/50 grid size-12 place-items-center rounded-full outline-none focus-visible:ring-[3px] disabled:opacity-40"
+          >
+            <ChevronDownIcon className="size-6" />
+          </button>
+        </div>
+      ) : null}
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <h1 className="font-display px-1 text-lg font-bold text-white drop-shadow">Reels</h1>
         <div className="pointer-events-auto flex gap-2">
           {reels.length > 0 ? (

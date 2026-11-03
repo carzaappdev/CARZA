@@ -40,17 +40,27 @@ export default async function ReportsPage() {
     // Marketplace reports wait until the marketplace is switched back on.
     .in('target_type', [...SOCIAL_REPORT_TARGETS])
     .order('created_at', { ascending: true })
-    .limit(100);
+    .limit(300);
+
+  // One card per reported thing (oldest report first), with how many people reported it.
+  const grouped = new Map<string, { report: NonNullable<typeof reports>[number]; count: number }>();
+  for (const r of reports ?? []) {
+    const key = `${r.target_type}:${r.target_id}`;
+    const seen = grouped.get(key);
+    if (seen) seen.count += 1;
+    else grouped.set(key, { report: r, count: 1 });
+  }
+  const queue = [...grouped.values()];
 
   return (
     <>
       <PageHeader
         title="Reports"
-        description="Oldest first. Remove takes the content down for everyone."
+        description={`${queue.length} open, oldest first. Remove takes it down for everyone.`}
       />
-      {reports?.length ? (
+      {queue.length ? (
         <ul className="flex flex-col gap-3">
-          {reports.map((r) => {
+          {queue.map(({ report: r, count }) => {
             const snapshot =
               r.target_snapshot &&
               typeof r.target_snapshot === 'object' &&
@@ -63,6 +73,7 @@ export default async function ReportsPage() {
                 <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
                   {r.target_type} · {REASON_LABEL.get(r.reason) ?? r.reason} ·{' '}
                   {new Date(r.created_at).toLocaleDateString('en-US')}
+                  {count > 1 ? ` · ${count} reports` : ''}
                 </p>
                 <p className="line-clamp-4 text-[15px] break-words whitespace-pre-wrap">
                   {preview}

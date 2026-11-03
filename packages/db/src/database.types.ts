@@ -1061,6 +1061,7 @@ export type Database = {
           featured_at: string | null;
           founding_number: number | null;
           id: string;
+          official: boolean;
           region: string | null;
           role: Database['public']['Enums']['app_role'];
           updated_at: string;
@@ -1076,6 +1077,7 @@ export type Database = {
           featured_at?: string | null;
           founding_number?: number | null;
           id: string;
+          official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -1090,6 +1092,7 @@ export type Database = {
           featured_at?: string | null;
           founding_number?: number | null;
           id?: string;
+          official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -1517,6 +1520,7 @@ export type Database = {
         };
         Returns: string;
       };
+      delete_my_account: { Args: Record<PropertyKey, never>; Returns: undefined };
       following_feed: {
         Args: { p_before?: string; p_before_id?: string; p_limit?: number };
         Returns: {
@@ -1663,6 +1667,7 @@ export type Database = {
           follower_count: number;
           id: string;
           nearby: boolean;
+          official: boolean;
           region: string;
           shared_makes: number;
           username: string;
@@ -1744,7 +1749,8 @@ export type Database = {
         | 'reel_comment'
         | 'event_rsvp'
         | 'event_reminder'
-        | 'event_cancelled';
+        | 'event_cancelled'
+        | 'event_updated';
       part_category:
         | 'tuning'
         | 'engine'
@@ -1911,6 +1917,7 @@ export const Constants = {
         'event_rsvp',
         'event_reminder',
         'event_cancelled',
+        'event_updated',
       ],
       part_category: [
         'tuning',

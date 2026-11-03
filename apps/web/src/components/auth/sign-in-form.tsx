@@ -6,20 +6,37 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { authErrorMessage, fieldErrors, signInSchema } from '@carza/shared';
 import { createClient } from '@/lib/supabase/browser';
-import { Field, FormMessage, SubmitButton, useFocusFirstInvalid } from './fields';
+import { Field, FormMessage, PasswordField, SubmitButton, useFocusFirstInvalid } from './fields';
 
-export function SignInForm({ next, initialError }: { next: string; initialError: string | null }) {
+export function SignInForm({
+  next,
+  initialMessage,
+}: {
+  next: string;
+  initialMessage: { tone: 'error' | 'success'; text: string } | null;
+}) {
   const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = useFocusFirstInvalid(errors);
-  const [formError, setFormError] = useState<string | null>(initialError);
+  const [formError, setFormError] = useState<string | null>(
+    initialMessage?.tone === 'error' ? initialMessage.text : null,
+  );
+  const [notice, setNotice] = useState(
+    initialMessage?.tone === 'success' ? initialMessage.text : null,
+  );
   const [pending, setPending] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
 
   async function resendConfirmation() {
     if (!unconfirmedEmail) return;
-    const { error } = await createClient().auth.resend({ type: 'signup', email: unconfirmedEmail });
+    const { error } = await createClient().auth.resend({
+      type: 'signup',
+      email: unconfirmedEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/welcome&from=signup`,
+      },
+    });
     if (error) return setFormError(authErrorMessage(error.code));
     setResent(true);
   }
@@ -30,6 +47,7 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
     if (!parsed.success) return setErrors(fieldErrors(parsed.error));
     setErrors({});
     setFormError(null);
+    setNotice(null);
     setPending(true);
 
     const { error } = await createClient().auth.signInWithPassword(parsed.data);
@@ -48,6 +66,7 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       {formError ? <FormMessage tone="error">{formError}</FormMessage> : null}
+      {notice && !formError ? <FormMessage tone="success">{notice}</FormMessage> : null}
       {unconfirmedEmail ? (
         resent ? (
           <FormMessage tone="success">We&apos;ve sent a new confirmation link.</FormMessage>
@@ -69,10 +88,9 @@ export function SignInForm({ next, initialError }: { next: string; initialError:
         required
         error={errors.email}
       />
-      <Field
+      <PasswordField
         label="Password"
         name="password"
-        type="password"
         autoComplete="current-password"
         required
         error={errors.password}

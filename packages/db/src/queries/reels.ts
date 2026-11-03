@@ -5,7 +5,7 @@ import type { PostAuthor } from './posts';
 const REEL_FIELDS = `
   id, video_path, poster_path, width, height, duration_seconds, caption, like_count, comment_count,
   view_count, created_at,
-  author:profiles!reels_author_id_fkey ( id, username, display_name, avatar_path )
+  author:profiles!reels_author_id_fkey ( id, username, display_name, avatar_path, official )
 ` as const;
 
 export type ReelView = {
@@ -21,6 +21,8 @@ export type ReelView = {
   createdAt: string;
   author: PostAuthor;
   liked: boolean;
+  /** Whether the viewer follows the author (false for guests and their own reels). */
+  following: boolean;
 };
 
 type ReelRow = {
@@ -39,17 +41,28 @@ type ReelRow = {
 
 async function hydrate(client: TypedClient, rows: ReelRow[], viewerId: string | null) {
   let liked = new Set<string>();
+  let followed = new Set<string>();
   if (viewerId && rows.length) {
-    const { data, error } = await client
-      .from('reel_likes')
-      .select('reel_id')
-      .eq('user_id', viewerId)
-      .in(
-        'reel_id',
-        rows.map((r) => r.id),
-      );
-    if (error) throw error;
-    liked = new Set(data.map((l) => l.reel_id));
+    const authorIds = [...new Set(rows.flatMap((r) => (r.author ? [r.author.id] : [])))];
+    const [likes, follows] = await Promise.all([
+      client
+        .from('reel_likes')
+        .select('reel_id')
+        .eq('user_id', viewerId)
+        .in(
+          'reel_id',
+          rows.map((r) => r.id),
+        ),
+      client
+        .from('follows')
+        .select('followee_id')
+        .eq('follower_id', viewerId)
+        .in('followee_id', authorIds),
+    ]);
+    if (likes.error) throw likes.error;
+    if (follows.error) throw follows.error;
+    liked = new Set(likes.data.map((l) => l.reel_id));
+    followed = new Set(follows.data.map((f) => f.followee_id));
   }
   return rows.flatMap((r): ReelView[] =>
     r.author
@@ -67,6 +80,7 @@ async function hydrate(client: TypedClient, rows: ReelRow[], viewerId: string | 
             createdAt: r.created_at,
             author: r.author,
             liked: liked.has(r.id),
+            following: followed.has(r.author.id),
           },
         ]
       : [],
@@ -125,4 +139,27 @@ export async function getReelsByAuthors(
     .limit(limit);
   if (error) throw error;
   return hydrate(client, data, viewerId);
+}
+
+export type ProfileReel = { id: string; posterPath: string; viewCount: number; caption: string };
+
+/** One person's latest reels, for the grid on their profile. */
+export async function getProfileReels(
+  client: TypedClient,
+  authorId: string,
+): Promise<ProfileReel[]> {
+  const { data, error } = await client
+    .from('reels')
+    .select('id, poster_path, view_count, caption')
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(LIMITS.profileReelGrid);
+  if (error) throw error;
+  return data.map((r) => ({
+    id: r.id,
+    posterPath: r.poster_path,
+    viewCount: r.view_count,
+    caption: r.caption,
+  }));
 }

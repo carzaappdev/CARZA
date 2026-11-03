@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react';
+import Link from 'next/link';
+import { LEGAL_LINKS } from '@/components/legal/legal';
 import { CarzaLogo, CarzaMark } from '@/components/brand/logo';
 
 const POINTS = [
@@ -52,12 +54,16 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             <div className="relative w-full max-w-[560px]">
               <CarzaMark
                 tone="dark"
+                sizes="560px"
+                loading="lazy"
                 className="h-auto w-full drop-shadow-[0_0_40px_rgba(255,255,255,0.18)]"
               />
               {/* Reflection on the showroom floor, clipped to a short strip under the car */}
               <div aria-hidden className="absolute top-full left-0 h-14 w-full overflow-hidden">
                 <CarzaMark
                   tone="dark"
+                  sizes="560px"
+                  loading="lazy"
                   className="pointer-events-none h-auto w-full -scale-y-100 opacity-[0.07] [mask-image:linear-gradient(to_bottom,black,transparent_60%)]"
                 />
               </div>
@@ -89,8 +95,20 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <main className="flex items-start justify-center bg-muted/50 dark:bg-background px-4 py-10 sm:py-14 lg:items-center">
-        <div className="w-full max-w-[420px] bg-card text-card-foreground ring-border rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-12px_rgba(0,0,0,0.12)] ring-1 sm:p-9 dark:shadow-none">
-          {children}
+        <div className="flex w-full max-w-[420px] flex-col gap-4">
+          <div className="w-full bg-card text-card-foreground ring-border rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_40px_-12px_rgba(0,0,0,0.12)] ring-1 sm:p-9 dark:shadow-none">
+            {children}
+          </div>
+          <nav
+            aria-label="Policies"
+            className="text-muted-foreground flex justify-center gap-4 text-xs"
+          >
+            {LEGAL_LINKS.map((l) => (
+              <Link key={l.href} href={l.href} className="hover:text-foreground">
+                {l.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </main>
     </div>

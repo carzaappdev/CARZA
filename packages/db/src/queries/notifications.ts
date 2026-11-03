@@ -37,7 +37,7 @@ export async function getNotifications(
   if (actorIds.length) {
     const { data: profiles, error: pErr } = await client
       .from('profiles')
-      .select('id, username, display_name, avatar_path')
+      .select('id, username, display_name, avatar_path, official')
       .in('id', actorIds);
     if (pErr) throw pErr;
     for (const p of profiles) actors.set(p.id, p);

@@ -1,10 +1,11 @@
+import { distanceMiles, type LatLng } from '@carza/shared';
 import type { Tables, TypedClient } from '../index';
 import type { PostAuthor } from './posts';
 
 const EVENT_FIELDS = `
   id, title, description, starts_at, ends_at, timezone, venue_name, address, postal_code, city, region,
   cover_path, capacity, going_count, cancelled_at, created_at,
-  host:profiles!events_host_id_fkey ( id, username, display_name, avatar_path )
+  host:profiles!events_host_id_fkey ( id, username, display_name, avatar_path, official )
 ` as const;
 
 export type EventSummary = Pick<
@@ -59,6 +60,74 @@ export async function getMyUpcomingEvents(
   return data.map((r) => r.event).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 }
 
+/** Events the user hosts, newest start first: upcoming, past and cancelled. */
+export async function getHostedEvents(
+  client: TypedClient,
+  userId: string,
+): Promise<EventSummary[]> {
+  const { data, error } = await client
+    .from('events')
+    .select(EVENT_FIELDS)
+    .eq('host_id', userId)
+    .order('starts_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return data;
+}
+
+/** Which of `eventIds` the user is going to. */
+export async function getRsvpdEventIds(client: TypedClient, userId: string, eventIds: string[]) {
+  if (!eventIds.length) return new Set<string>();
+  const { data, error } = await client
+    .from('event_rsvps')
+    .select('event_id')
+    .eq('user_id', userId)
+    .in('event_id', eventIds);
+  if (error) throw error;
+  return new Set(data.map((r) => r.event_id));
+}
+
+/** Miles from `from` to each event's ZIP centroid (the same point "near you" searches use). */
+export async function getEventDistances(
+  client: TypedClient,
+  from: LatLng,
+  events: Pick<EventSummary, 'id' | 'postal_code'>[],
+) {
+  const codes = [...new Set(events.map((e) => e.postal_code))];
+  const out = new Map<string, number>();
+  if (!codes.length) return out;
+  const { data, error } = await client
+    .from('postal_codes')
+    .select('code, lat, lng')
+    .in('code', codes);
+  if (error) throw error;
+  const points = new Map(data.map((p) => [p.code, p]));
+  for (const e of events) {
+    const p = points.get(e.postal_code);
+    if (p) out.set(e.id, distanceMiles(from, p));
+  }
+  return out;
+}
+
+/** The ZIP whose centroid is closest to a point (within ~70 miles), for "Near Austin, TX" labels. */
+export async function getNearestPostalCode(client: TypedClient, at: LatLng) {
+  for (const box of [0.15, 1]) {
+    const { data, error } = await client
+      .from('postal_codes')
+      .select('code, city, region, lat, lng')
+      .gte('lat', at.lat - box)
+      .lte('lat', at.lat + box)
+      .gte('lng', at.lng - box * 1.3)
+      .lte('lng', at.lng + box * 1.3)
+      .limit(1000);
+    if (error) throw error;
+    if (data.length) {
+      return data.reduce((best, p) => (distanceMiles(at, p) < distanceMiles(at, best) ? p : best));
+    }
+  }
+  return null;
+}
+
 /** One event with the first attendees and whether the viewer is going. */
 export async function getEvent(client: TypedClient, id: string, viewerId: string | null) {
   const { data: event, error } = await client
@@ -72,7 +141,9 @@ export async function getEvent(client: TypedClient, id: string, viewerId: string
   const [attendees, mine] = await Promise.all([
     client
       .from('event_rsvps')
-      .select('user:profiles!event_rsvps_user_id_fkey ( id, username, display_name, avatar_path )')
+      .select(
+        'user:profiles!event_rsvps_user_id_fkey ( id, username, display_name, avatar_path, official )',
+      )
       .eq('event_id', id)
       .order('created_at', { ascending: true })
       .limit(24),
@@ -108,7 +179,7 @@ async function getFriendsGoing(client: TypedClient, eventId: string, viewerId: s
   const { data, error: fErr } = await client
     .from('follows')
     .select(
-      'followee:profiles!follows_followee_id_fkey ( id, username, display_name, avatar_path )',
+      'followee:profiles!follows_followee_id_fkey ( id, username, display_name, avatar_path, official )',
     )
     .eq('follower_id', viewerId)
     .in(
