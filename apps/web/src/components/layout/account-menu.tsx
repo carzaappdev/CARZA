@@ -2,7 +2,14 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { CarFrontIcon, FileTextIcon, LogOutIcon, SettingsIcon, ShieldAlertIcon, UserIcon } from 'lucide-react';
+import {
+  CarFrontIcon,
+  FileTextIcon,
+  LogOutIcon,
+  SettingsIcon,
+  ShieldAlertIcon,
+  UserIcon,
+} from 'lucide-react';
 import { signOut } from '@/app/auth/actions';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { Button } from '@/components/ui/button';
