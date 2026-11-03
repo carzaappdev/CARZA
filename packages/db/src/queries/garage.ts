@@ -38,6 +38,7 @@ export type SuggestedPerson = {
   city: string | null;
   region: string | null;
   featured: boolean;
+  official: boolean;
   nearby: boolean;
   sharedMakes: number;
 };
@@ -58,6 +59,7 @@ export async function getSuggestedFollows(
     city: p.city,
     region: p.region,
     featured: p.featured,
+    official: p.official,
     nearby: p.nearby,
     sharedMakes: p.shared_makes,
   }));

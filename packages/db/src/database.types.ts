@@ -925,6 +925,7 @@ export type Database = {
           featured_at: string | null;
           founding_number: number | null;
           id: string;
+          official: boolean;
           region: string | null;
           role: Database['public']['Enums']['app_role'];
           updated_at: string;
@@ -940,6 +941,7 @@ export type Database = {
           featured_at?: string | null;
           founding_number?: number | null;
           id: string;
+          official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -954,6 +956,7 @@ export type Database = {
           featured_at?: string | null;
           founding_number?: number | null;
           id?: string;
+          official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -1515,6 +1518,7 @@ export type Database = {
           follower_count: number;
           id: string;
           nearby: boolean;
+          official: boolean;
           region: string;
           shared_makes: number;
           username: string;

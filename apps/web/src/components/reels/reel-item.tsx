@@ -2,6 +2,7 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { useRouter } from 'next/navigation';
 import { useEffect, useOptimistic, useRef, useState, useTransition } from 'react';
 import {
@@ -349,6 +350,7 @@ export function ReelItem({
                 className="size-9 ring-2 ring-white/80"
               />
               <span className="truncate font-semibold drop-shadow">{reel.author.display_name}</span>
+              <OfficialBadge official={reel.author.official} className="text-white drop-shadow" />
             </Link>
             {isOwn || (reel.following && !followed) ? null : followed ? (
               <span className="animate-in fade-in inline-flex h-7 shrink-0 items-center gap-1 rounded-full border border-white/40 px-2.5 text-xs font-semibold">

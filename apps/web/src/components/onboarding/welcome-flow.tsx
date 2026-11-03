@@ -8,6 +8,7 @@ import type { GarageCar, SuggestedPerson } from '@carza/db';
 import { FollowButton } from '@/components/feed/follow-button';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { GarageEditor, type Catalog } from '@/components/garage/garage-editor';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { Button } from '@/components/ui/button';
 import { completeOnboarding, loadSuggestedFollows, setHomeZip } from '@/lib/actions/garage';
 import { cn } from '@/lib/utils';
@@ -153,7 +154,10 @@ export function WelcomeFlow({
                 <li key={p.id} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
                   <UserAvatar name={p.display_name} path={p.avatar_path} className="size-11" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{p.display_name}</span>
+                    <span className="flex items-center gap-1 font-semibold">
+                      <span className="truncate">{p.display_name}</span>
+                      <OfficialBadge official={p.official} />
+                    </span>
                     <span className="text-muted-foreground block truncate text-sm">
                       {reason(p)}
                     </span>
