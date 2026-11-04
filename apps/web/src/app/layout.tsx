@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ThemeProvider } from 'next-themes';
 import { CookieNotice } from '@/components/legal/cookie-notice';
 import { THEME_COLORS } from '@/components/theme/colors';
+import { ServiceWorker } from '@/components/pwa/service-worker';
 import { ThemeColor } from '@/components/theme/theme-color';
 import { Toaster } from '@/components/ui/sonner';
 import { clientEnv } from '@/env/client';
@@ -15,6 +16,9 @@ export const metadata: Metadata = {
   title: { default: `Carza: ${SITE_TAGLINE.toLowerCase()}`, template: '%s · Carza' },
   applicationName: 'Carza',
   description: SITE_DESCRIPTION,
+  // Home Screen launch on iPhone and iPad: full screen, named Carza, no Safari bars.
+  appleWebApp: { capable: true, title: 'Carza', statusBarStyle: 'default' },
+  formatDetection: { telephone: false },
   openGraph: { type: 'website', siteName: 'Carza', locale: 'en_US' },
   twitter: { card: 'summary_large_image' },
 };
@@ -40,6 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           disableTransitionOnChange
         >
           <ThemeColor />
+          <ServiceWorker />
           {children}
           <CookieNotice />
           <Toaster />
