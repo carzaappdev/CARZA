@@ -5,12 +5,12 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { isActive, TAB_BAR } from './nav';
 
-/** The three app tabs. `bar` is the fixed bottom bar on phones; `header` is the row in the desktop header. */
+/** The main app tabs. `bar` is the fixed bottom bar on phones; `header` is the row in the desktop header. */
 export function TabLinks({ variant }: { variant: 'bar' | 'header' }) {
   const pathname = usePathname();
   const bar = variant === 'bar';
   return (
-    <ul className={cn(bar ? 'grid grid-cols-3' : 'flex items-center gap-1')}>
+    <ul className={cn(bar ? 'grid grid-cols-4' : 'flex items-center gap-1')}>
       {TAB_BAR.map((item) => {
         const active = isActive(item, pathname, TAB_BAR);
         return (

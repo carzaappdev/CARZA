@@ -4,10 +4,11 @@ You are working on **Carza**, a local-first car community app (social feed, reel
 Mahdy is the lead developer. Treat this file as law. If a request conflicts with it, say so before acting.
 
 ## Product (what we're building)
-**Launch app (decided 2026-10-27): exactly three tabs. Build ONLY this until told otherwise:**
+**Launch app (decided 2026-10-27; Garage added 2026-11-04): exactly four tabs. Build ONLY this until told otherwise:**
 - **Feed** — Threads-style social feed: text + photo posts, likes, replies, follows, profiles.
 - **Reels** — short vertical car videos you swipe through.
 - **Events** — anyone can host a car event (meet, cruise, show); others RSVP.
+- **Garage** — My Garage: your cars, their builds, and parts matched to each one (`/account/garage`).
 - Auth (email/password, Apple, Google) and profiles carry over.
 
 **Parked (built, but switched off for launch):** marketplace (listings, search, selling), dealer pages and
@@ -20,7 +21,7 @@ Launch strategy: **one metro first, then national (one country).** Never hardcod
 
 ## Stack
 - Monorepo: **pnpm + Turborepo**
-- `apps/web` — **Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui**. The app (Feed, Reels, Events) plus the parked marketplace and dealer dashboard.
+- `apps/web` — **Next.js (App Router) + TypeScript (strict) + Tailwind + shadcn/ui**. The app (Feed, Reels, Events, Garage) plus the parked marketplace and dealer dashboard.
 - `apps/mobile` — Expo (React Native). **Not yet. Do not create.**
 - `packages/shared` — Zod schemas, types, pure business logic (must be reusable by mobile later)
 - `packages/db` — generated Supabase types + typed query helpers
