@@ -16,11 +16,12 @@ export const SEARCH_HREF: Route = '/search';
 
 export type NavItem = { href: Route; label: string; Icon: LucideIcon; exact?: boolean };
 
-/** The app's three tabs: bottom bar on phones, header links on larger screens. */
+/** The app's main tabs: bottom bar on phones, header links on larger screens. */
 export const TAB_BAR: NavItem[] = [
   { href: '/', label: 'Feed', Icon: HomeIcon, exact: true },
   { href: '/reels', label: 'Reels', Icon: ClapperboardIcon },
   { href: '/events', label: 'Events', Icon: CalendarDaysIcon },
+  { href: '/account/garage', label: 'Garage', Icon: CarFrontIcon },
 ];
 
 /** The account area's section nav. */

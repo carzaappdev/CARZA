@@ -5,8 +5,14 @@ const activeLabels = (items: typeof TAB_BAR, pathname: string) =>
   items.filter((item) => isActive(item, pathname, items)).map((item) => item.label);
 
 describe('isActive', () => {
-  it('has exactly the three launch tabs', () => {
-    expect(TAB_BAR.map((t) => t.label)).toEqual(['Feed', 'Reels', 'Events']);
+  it('has the four main tabs', () => {
+    expect(TAB_BAR.map((t) => t.label)).toEqual(['Feed', 'Reels', 'Events', 'Garage']);
+  });
+
+  it('marks Garage on your garage pages but not on a public car page', () => {
+    expect(activeLabels(TAB_BAR, '/account/garage')).toEqual(['Garage']);
+    expect(activeLabels(TAB_BAR, '/account/garage/new')).toEqual(['Garage']);
+    expect(activeLabels(TAB_BAR, '/garage/abc')).toEqual([]);
   });
 
   it('marks Feed only on the exact root', () => {
