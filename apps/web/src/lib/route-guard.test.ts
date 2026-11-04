@@ -7,6 +7,7 @@ describe('routeRedirect', () => {
       '/sign-in?next=%2Faccount%2Flistings%3Ftab%3Ddrafts',
     );
     expect(routeRedirect('/dealer', '', false)).toBe('/sign-in?next=%2Fdealer');
+    expect(routeRedirect('/messages/abc', '', false)).toBe('/sign-in?next=%2Fmessages%2Fabc');
   });
 
   it('does not treat lookalike paths as protected', () => {
@@ -43,7 +44,6 @@ describe('hiddenForLaunch', () => {
       '/dealer',
       '/dealer/d1/inventory',
       '/account/listings/new',
-      '/account/messages',
       '/account/saved',
     ]) {
       expect(hiddenForLaunch(path)).toBe(true);
@@ -57,6 +57,8 @@ describe('hiddenForLaunch', () => {
       '/events',
       '/p/abc',
       '/u/someone',
+      '/messages',
+      '/messages/abc',
       '/account',
       '/account/settings',
       '/sign-in',

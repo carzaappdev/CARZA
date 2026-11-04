@@ -25,4 +25,6 @@ export * from './schemas/garage';
 export * from './schemas/account';
 export * from './logic/calendar';
 export * from './logic/rich-text';
+export * from './schemas/message';
+export * from './logic/messages';
 export * from './logic/feed';

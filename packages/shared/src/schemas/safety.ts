@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 /** What people can report in the social app. */
-export const SOCIAL_REPORT_TARGETS = ['post', 'reel', 'event', 'user'] as const;
+export const SOCIAL_REPORT_TARGETS = ['post', 'reel', 'event', 'user', 'message'] as const;
 export type SocialReportTarget = (typeof SOCIAL_REPORT_TARGETS)[number];
 
 /** Reasons offered for social content, in the order shown, with their labels. */
