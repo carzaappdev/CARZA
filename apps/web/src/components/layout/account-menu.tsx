@@ -2,7 +2,14 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { FileTextIcon, LogOutIcon, SettingsIcon, ShieldAlertIcon, UserIcon } from 'lucide-react';
+import {
+  CarFrontIcon,
+  FileTextIcon,
+  LogOutIcon,
+  SettingsIcon,
+  ShieldAlertIcon,
+  UserIcon,
+} from 'lucide-react';
 import { signOut } from '@/app/auth/actions';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { Button } from '@/components/ui/button';
@@ -41,6 +48,11 @@ export function AccountMenu({ viewer }: { viewer: Viewer }) {
               </Link>
             </DropdownMenuItem>
           ) : null}
+          <DropdownMenuItem asChild>
+            <Link href="/account/garage">
+              <CarFrontIcon /> My Garage
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/account/settings">
               <SettingsIcon /> Settings
