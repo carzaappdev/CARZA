@@ -14,6 +14,8 @@ export const LIMITS = {
   reelMaxSeconds: 60,
   reelCaptionMaxLength: 300,
   reelPageSize: 8,
+  /** Reels shown in the grid on a profile (newest first). */
+  profileReelGrid: 30,
   videoMimeTypes: ['video/mp4', 'video/quicktime', 'video/webm'],
   listingDescriptionMaxLength: 5000,
   searchRadiusMilesMax: 500,

@@ -1,5 +1,6 @@
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { ClockIcon, MapPinIcon, UsersIcon } from 'lucide-react';
@@ -16,6 +17,7 @@ import { PostCard } from '@/components/feed/post-card';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { ShareButton } from '@/components/listings/share-button';
 import { SafetyMenu } from '@/components/safety/safety-menu';
+import { Button } from '@/components/ui/button';
 import { clientEnv } from '@/env/client';
 import { getUser } from '@/lib/auth';
 import { eventCalendarInfo, eventJsonLd } from '@/lib/event-calendar';
@@ -105,18 +107,16 @@ export default async function EventPage({ params }: Props) {
           </li>
           <li className="flex gap-3">
             <MapPinIcon className="text-muted-foreground mt-0.5 size-5 shrink-0" aria-hidden />
-            <span>
-              <span className="font-semibold">{event.venue_name}</span>
-              <br />
-              <a
-                href={mapsHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground underline-offset-4 hover:underline"
-              >
-                {where}
-              </a>
-            </span>
+            <a
+              href={mapsHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group focus-visible:ring-ring/50 -m-1 rounded-lg p-1 outline-none focus-visible:ring-[3px]"
+            >
+              <span className="font-semibold group-hover:underline">{event.venue_name}</span>
+              <span className="text-muted-foreground block">{where}</span>
+              <span className="text-primary mt-0.5 block text-sm font-semibold">Open in Maps</span>
+            </a>
           </li>
           <li className="flex gap-3">
             <UsersIcon className="text-muted-foreground mt-0.5 size-5 shrink-0" aria-hidden />
@@ -195,7 +195,10 @@ export default async function EventPage({ params }: Props) {
                 <span className="text-muted-foreground block text-xs font-medium tracking-wide uppercase">
                   Hosted by
                 </span>
-                <span className="block truncate font-semibold">{event.host.display_name}</span>
+                <span className="flex items-center gap-1 font-semibold">
+                  <span className="truncate">{event.host.display_name}</span>
+                  <OfficialBadge official={event.host.official} />
+                </span>
               </span>
             </Link>
             <SafetyMenu
@@ -259,6 +262,17 @@ export default async function EventPage({ params }: Props) {
               ended ? 'Post your photos from the meet…' : 'Ask a question or hype it up…'
             }
           />
+        ) : !viewer && !cancelled ? (
+          <div className="flex items-center gap-3 border-b px-4 py-4">
+            <p className="text-muted-foreground flex-1 text-[15px]">
+              Sign in to join the discussion.
+            </p>
+            <Button asChild size="sm" className="rounded-full">
+              <Link href={`/sign-in?next=${encodeURIComponent(`/events/${event.id}`)}` as Route}>
+                Sign in
+              </Link>
+            </Button>
+          </div>
         ) : null}
         {posts.length ? (
           posts.map((post) => (

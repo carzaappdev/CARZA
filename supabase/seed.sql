@@ -85,13 +85,14 @@ select
   'email', now(), now(), now()
 from seed_users u;
 
+-- Staff first: only staff and the official account can take names like 'admin'.
+update public.profiles set role = 'admin' where id = pg_temp.sid('admin');
+
 -- Readable usernames + home areas.
 update public.profiles p
 set username = replace(u.label, '-', '_'), city = c.city, region = c.region
 from seed_users u, seed_config c
 where p.id = pg_temp.sid(u.label);
-
-update public.profiles set role = 'admin' where id = pg_temp.sid('admin');
 
 update public.profile_private pp
 set postal_code = '78701', location = private.approximate_point(pg_temp.pt(3, -2))

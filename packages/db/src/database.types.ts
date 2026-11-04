@@ -449,33 +449,45 @@ export type Database = {
       garage_cars: {
         Row: {
           created_at: string;
+          gallery_paths: string[];
           id: string;
           make_id: number;
           model_id: number;
           nickname: string | null;
           owner_id: string;
           photo_path: string | null;
+          story: string | null;
+          trim_level: string | null;
+          updated_at: string;
           year: number;
         };
         ComputedFields: never;
         Insert: {
           created_at?: string;
+          gallery_paths?: string[];
           id?: string;
           make_id: number;
           model_id: number;
           nickname?: string | null;
           owner_id?: string;
           photo_path?: string | null;
+          story?: string | null;
+          trim_level?: string | null;
+          updated_at?: string;
           year: number;
         };
         Update: {
           created_at?: string;
+          gallery_paths?: string[];
           id?: string;
           make_id?: number;
           model_id?: number;
           nickname?: string | null;
           owner_id?: string;
           photo_path?: string | null;
+          story?: string | null;
+          trim_level?: string | null;
+          updated_at?: string;
           year?: number;
         };
         Relationships: [
@@ -495,6 +507,49 @@ export type Database = {
           },
           {
             foreignKeyName: 'garage_cars_owner_id_fkey';
+            columns: ['owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      garage_mods: {
+        Row: {
+          car_id: string;
+          category: Database['public']['Enums']['part_category'];
+          created_at: string;
+          id: string;
+          name: string;
+          owner_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          car_id: string;
+          category: Database['public']['Enums']['part_category'];
+          created_at?: string;
+          id?: string;
+          name: string;
+          owner_id?: string;
+        };
+        Update: {
+          car_id?: string;
+          category?: Database['public']['Enums']['part_category'];
+          created_at?: string;
+          id?: string;
+          name?: string;
+          owner_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'garage_mods_car_id_owner_id_fkey';
+            columns: ['car_id', 'owner_id'];
+            isOneToOne: false;
+            referencedRelation: 'garage_cars';
+            referencedColumns: ['id', 'owner_id'];
+          },
+          {
+            foreignKeyName: 'garage_mods_owner_id_fkey';
             columns: ['owner_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
@@ -744,6 +799,87 @@ export type Database = {
           },
         ];
       };
+      part_fitments: {
+        Row: {
+          id: number;
+          make_id: number | null;
+          model_id: number | null;
+          part_id: number;
+          year_from: number | null;
+          year_to: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          id?: never;
+          make_id?: number | null;
+          model_id?: number | null;
+          part_id: number;
+          year_from?: number | null;
+          year_to?: number | null;
+        };
+        Update: {
+          id?: never;
+          make_id?: number | null;
+          model_id?: number | null;
+          part_id?: number;
+          year_from?: number | null;
+          year_to?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'part_fitments_make_id_fkey';
+            columns: ['make_id'];
+            isOneToOne: false;
+            referencedRelation: 'vehicle_makes';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'part_fitments_make_id_model_id_fkey';
+            columns: ['make_id', 'model_id'];
+            isOneToOne: false;
+            referencedRelation: 'vehicle_models';
+            referencedColumns: ['make_id', 'id'];
+          },
+          {
+            foreignKeyName: 'part_fitments_part_id_fkey';
+            columns: ['part_id'];
+            isOneToOne: false;
+            referencedRelation: 'parts';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      parts: {
+        Row: {
+          blurb: string;
+          brand: string;
+          category: Database['public']['Enums']['part_category'];
+          id: number;
+          name: string;
+          rank: number;
+          slug: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          blurb: string;
+          brand: string;
+          category: Database['public']['Enums']['part_category'];
+          id?: never;
+          name: string;
+          rank?: number;
+          slug: string;
+        };
+        Update: {
+          blurb?: string;
+          brand?: string;
+          category?: Database['public']['Enums']['part_category'];
+          id?: never;
+          name?: string;
+          rank?: number;
+          slug?: string;
+        };
+        Relationships: [];
+      };
       post_likes: {
         Row: {
           created_at: string;
@@ -931,6 +1067,7 @@ export type Database = {
           featured_at: string | null;
           founding_number: number | null;
           id: string;
+          official: boolean;
           region: string | null;
           role: Database['public']['Enums']['app_role'];
           updated_at: string;
@@ -946,6 +1083,7 @@ export type Database = {
           featured_at?: string | null;
           founding_number?: number | null;
           id: string;
+          official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -960,6 +1098,7 @@ export type Database = {
           featured_at?: string | null;
           founding_number?: number | null;
           id?: string;
+          official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
           updated_at?: string;
@@ -1501,6 +1640,19 @@ export type Database = {
       };
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined };
       my_invite_count: { Args: Record<PropertyKey, never>; Returns: number };
+      parts_for_car: {
+        Args: { p_car_id: string; p_limit?: number };
+        Returns: {
+          blurb: string;
+          brand: string;
+          category: Database['public']['Enums']['part_category'];
+          fit: string;
+          id: number;
+          installed: boolean;
+          name: string;
+          slug: string;
+        }[];
+      };
       record_reel_view: { Args: { p_guest_id?: string; p_reel_id: string }; Returns: undefined };
       request_test_drive: {
         Args: { p_listing_id: string; p_note?: string; p_proposed_times: string[] };
@@ -1583,6 +1735,7 @@ export type Database = {
           follower_count: number;
           id: string;
           nearby: boolean;
+          official: boolean;
           region: string;
           shared_makes: number;
           username: string;
@@ -1666,6 +1819,18 @@ export type Database = {
         | 'event_reminder'
         | 'event_cancelled'
         | 'event_updated';
+      part_category:
+        | 'tuning'
+        | 'engine'
+        | 'intake_exhaust'
+        | 'suspension'
+        | 'wheels_tires'
+        | 'brakes'
+        | 'exterior'
+        | 'lighting'
+        | 'interior'
+        | 'electronics'
+        | 'care';
       report_reason: 'scam' | 'spam' | 'offensive' | 'misleading' | 'stolen' | 'other';
       report_status: 'open' | 'reviewing' | 'resolved' | 'dismissed';
       report_target: 'listing' | 'user' | 'message' | 'dealership' | 'post' | 'reel' | 'event';
@@ -1821,6 +1986,19 @@ export const Constants = {
         'event_reminder',
         'event_cancelled',
         'event_updated',
+      ],
+      part_category: [
+        'tuning',
+        'engine',
+        'intake_exhaust',
+        'suspension',
+        'wheels_tires',
+        'brakes',
+        'exterior',
+        'lighting',
+        'interior',
+        'electronics',
+        'care',
       ],
       report_reason: ['scam', 'spam', 'offensive', 'misleading', 'stolen', 'other'],
       report_status: ['open', 'reviewing', 'resolved', 'dismissed'],

@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { DownloadIcon, KeyRoundIcon, LogOutIcon } from 'lucide-react';
 import { mutedPushCategories } from '@carza/shared';
 import { DeleteAccount } from '@/components/account/delete-account';
+import { HomeZip } from '@/components/account/home-zip';
 import { PageHeader } from '@/components/layout/page-header';
 import { ProfileForm } from '@/components/feed/profile-form';
 import { PushSettings } from '@/components/pwa/push-settings';
@@ -25,7 +26,7 @@ export default async function SettingsPage() {
     await Promise.all([
       supabase
         .from('profiles')
-        .select('display_name, username, bio, avatar_path')
+        .select('display_name, username, bio, avatar_path, city, region')
         .eq('id', user.id)
         .single(),
       supabase
@@ -35,7 +36,11 @@ export default async function SettingsPage() {
         )
         .eq('blocker_id', user.id)
         .order('created_at', { ascending: false }),
-      supabase.from('profile_private').select('push_muted').eq('user_id', user.id).maybeSingle(),
+      supabase
+        .from('profile_private')
+        .select('postal_code, push_muted')
+        .eq('user_id', user.id)
+        .maybeSingle(),
       vapidPublicKey(),
     ]);
   const providers = (user.app_metadata.providers as string[] | undefined) ?? [];
@@ -53,6 +58,15 @@ export default async function SettingsPage() {
             avatarPath: profile?.avatar_path ?? null,
           }}
         />
+      </Section>
+
+      <Section id="location" title="Location">
+        <p className="text-muted-foreground -mt-1 text-sm">
+          {profile?.city
+            ? `Your profile shows ${profile.city}, ${profile.region}. We use your ZIP to find events near you.`
+            : 'Add your ZIP to see events near you. Only your city shows on your profile.'}
+        </p>
+        <HomeZip initial={privateProfile?.postal_code ?? null} />
       </Section>
 
       <Section id="alerts" title="Notifications">

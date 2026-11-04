@@ -10,7 +10,7 @@ export const getViewer = cache(async () => {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from('profiles')
-    .select('display_name, username, avatar_path')
+    .select('display_name, username, avatar_path, role')
     .eq('id', user.id)
     .maybeSingle();
   // A sign-up trigger creates the profile, so a missing row is a bug. Log it, but keep the header (and so
@@ -21,6 +21,7 @@ export const getViewer = cache(async () => {
     avatarPath: profile?.avatar_path ?? null,
     displayName: profile?.display_name ?? 'Your account',
     username: profile?.username ?? null,
+    isAdmin: profile?.role === 'admin',
   };
 });
 

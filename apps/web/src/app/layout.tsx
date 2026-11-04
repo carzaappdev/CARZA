@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from 'next-themes';
+import { CookieNotice } from '@/components/legal/cookie-notice';
 import { THEME_COLORS } from '@/components/theme/colors';
 import { ServiceWorker } from '@/components/pwa/service-worker';
 import { ThemeColor } from '@/components/theme/theme-color';
@@ -45,6 +46,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <ThemeColor />
           <ServiceWorker />
           {children}
+          <CookieNotice />
           <Toaster />
         </ThemeProvider>
       </body>

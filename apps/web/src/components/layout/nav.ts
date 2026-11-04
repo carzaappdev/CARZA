@@ -52,3 +52,8 @@ export function isActive(item: NavItem, pathname: string, items: NavItem[]) {
     (other) => other !== item && other.href.length > item.href.length && matches(other),
   );
 }
+
+/** The full-screen reel player (not the uploader), where the phone tab bar goes dark to match the video. */
+export function isReelPlayer(pathname: string) {
+  return pathname === '/reels' || (/^\/reels\/[^/]+$/.test(pathname) && pathname !== '/reels/new');
+}

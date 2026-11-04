@@ -2,7 +2,14 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { LogOutIcon, SettingsIcon, UserIcon } from 'lucide-react';
+import {
+  CarFrontIcon,
+  FileTextIcon,
+  LogOutIcon,
+  SettingsIcon,
+  ShieldAlertIcon,
+  UserIcon,
+} from 'lucide-react';
 import { signOut } from '@/app/auth/actions';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { currentSubscription } from '@/lib/push-client';
@@ -43,12 +50,29 @@ export function AccountMenu({ viewer }: { viewer: Viewer }) {
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem asChild>
+            <Link href="/account/garage">
+              <CarFrontIcon /> My Garage
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
             <Link href="/account/settings">
               <SettingsIcon /> Settings
             </Link>
           </DropdownMenuItem>
+          {viewer.isAdmin ? (
+            <DropdownMenuItem asChild>
+              <Link href="/account/reports">
+                <ShieldAlertIcon /> Reports
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/terms">
+            <FileTextIcon /> Terms &amp; privacy
+          </Link>
+        </DropdownMenuItem>
         {/* Signing out stops this device's alerts, so a shared phone doesn't keep getting yours. */}
         <form
           action={signOut}

@@ -47,7 +47,9 @@ export async function createPost(input: unknown): Promise<ActionResult<PostView>
     console.error('createPost failed', { code: error.code, userId: user.id });
     return fail('INTERNAL', 'Couldn’t post. Try again.');
   }
-  if (!reelId) revalidatePath('/');
+  // A new top-level post is added to the top of the feed on the client. Revalidating '/' here would
+  // re-render the ranked feed, where a post with no likes yet sits far down, and the viewer's post would vanish.
+  if (!reelId && (replyToId || eventId)) revalidatePath('/');
   if (replyToId) revalidatePath(`/p/${replyToId}`);
   if (eventId) revalidatePath(`/events/${eventId}`);
   const post = await getPost(supabase, data.id, user.id).catch(() => null);

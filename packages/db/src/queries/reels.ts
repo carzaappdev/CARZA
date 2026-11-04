@@ -5,7 +5,7 @@ import type { PostAuthor } from './posts';
 const REEL_FIELDS = `
   id, video_path, poster_path, width, height, duration_seconds, caption, like_count, comment_count,
   view_count, created_at,
-  author:profiles!reels_author_id_fkey ( id, username, display_name, avatar_path )
+  author:profiles!reels_author_id_fkey ( id, username, display_name, avatar_path, official )
 ` as const;
 
 export type ReelView = {
@@ -121,4 +121,45 @@ export async function getReel(client: TypedClient, id: string, viewerId: string 
   const { data, error } = await client.from('reels').select(REEL_FIELDS).eq('id', id).maybeSingle();
   if (error) throw error;
   return data ? ((await hydrate(client, [data], viewerId))[0] ?? null) : null;
+}
+
+/** The newest reels by any of these people (e.g. owners of the same car). */
+export async function getReelsByAuthors(
+  client: TypedClient,
+  authorIds: string[],
+  viewerId: string | null,
+  limit = 6,
+) {
+  if (!authorIds.length) return [];
+  const { data, error } = await client
+    .from('reels')
+    .select(REEL_FIELDS)
+    .in('author_id', authorIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return hydrate(client, data, viewerId);
+}
+
+export type ProfileReel = { id: string; posterPath: string; viewCount: number; caption: string };
+
+/** One person's latest reels, for the grid on their profile. */
+export async function getProfileReels(
+  client: TypedClient,
+  authorId: string,
+): Promise<ProfileReel[]> {
+  const { data, error } = await client
+    .from('reels')
+    .select('id, poster_path, view_count, caption')
+    .eq('author_id', authorId)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(LIMITS.profileReelGrid);
+  if (error) throw error;
+  return data.map((r) => ({
+    id: r.id,
+    posterPath: r.poster_path,
+    viewCount: r.view_count,
+    caption: r.caption,
+  }));
 }
