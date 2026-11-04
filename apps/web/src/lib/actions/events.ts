@@ -6,6 +6,7 @@ import {
   eventIdSchema,
   fail,
   ok,
+  setRsvpCarsSchema,
   setRsvpSchema,
   updateEventSchema,
   type ActionResult,
@@ -156,4 +157,35 @@ export async function setRsvp(input: unknown): Promise<ActionResult<{ going: boo
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');
   return ok({ going });
+}
+
+/** Replace the cars from your garage you're bringing to an event you're going to. */
+export async function setRsvpCars(input: unknown): Promise<ActionResult<null>> {
+  const parsed = setRsvpCarsSchema.safeParse(input);
+  if (!parsed.success) return fail('VALIDATION', 'Pick up to 3 cars from your garage.');
+  const user = await getUser();
+  if (!user) return fail('UNAUTHENTICATED', 'Sign in to bring a car.');
+
+  const { eventId, carIds } = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_event_rsvp_cars', {
+    p_event_id: eventId,
+    p_car_ids: carIds,
+  });
+  if (error) {
+    if (error.code === 'CZ409') return fail('CONFLICT', 'You can bring up to 3 cars.');
+    if (error.code === 'CZ429') return fail('RATE_LIMITED', 'Slow down a little and try again.');
+    if (error.code === '22023')
+      return fail(
+        'CONFLICT',
+        error.message.includes('cancelled') ? 'This event was cancelled.' : 'This event has ended.',
+      );
+    // Not going any more, or a car that isn't in your garage.
+    if (error.code === '23503')
+      return fail('CONFLICT', 'RSVP first, and pick cars from your own garage.');
+    console.error('setRsvpCars failed', { code: error.code, userId: user.id });
+    return fail('INTERNAL', 'Couldn’t save your cars. Try again.');
+  }
+  revalidatePath(`/events/${eventId}`);
+  return ok(null);
 }

@@ -158,12 +158,57 @@ export async function getEvent(client: TypedClient, id: string, viewerId: string
   ]);
   if (attendees.error) throw attendees.error;
   if (mine.error) throw mine.error;
+  const cars = await getEventCars(client, id);
   return {
     ...event,
     attendees: attendees.data.flatMap((r) => (r.user ? [r.user] : [])),
     viewerGoing: mine.data !== null,
+    cars,
+    viewerCarIds: viewerId ? cars.filter((c) => c.owner.id === viewerId).map((c) => c.id) : [],
     friendsGoing: viewerId ? await getFriendsGoing(client, id, viewerId) : [],
   };
+}
+
+export type EventCar = {
+  id: string;
+  year: number;
+  make: string;
+  model: string;
+  nickname: string | null;
+  photoPath: string | null;
+  owner: PostAuthor;
+};
+
+/** Cars guests are bringing, in the order they were added (up to 60 shown). */
+async function getEventCars(client: TypedClient, eventId: string): Promise<EventCar[]> {
+  const { data, error } = await client
+    .from('event_rsvp_cars')
+    .select(
+      `car:garage_cars!event_rsvp_cars_car_id_user_id_fkey (
+        id, year, nickname, photo_path,
+        make:vehicle_makes ( name ), model:vehicle_models ( name ),
+        owner:profiles!garage_cars_owner_id_fkey ( id, username, display_name, avatar_path, official )
+      )`,
+    )
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+    .limit(60);
+  if (error) throw error;
+  return data.flatMap(({ car }): EventCar[] =>
+    car?.owner
+      ? [
+          {
+            id: car.id,
+            year: car.year,
+            make: car.make?.name ?? '',
+            model: car.model?.name ?? '',
+            nickname: car.nickname,
+            photoPath: car.photo_path,
+            owner: car.owner,
+          },
+        ]
+      : [],
+  );
 }
 
 /** People the viewer follows who are going (up to 500 guests checked, which covers any meet). */

@@ -320,6 +320,43 @@ export type Database = {
           },
         ];
       };
+      event_rsvp_cars: {
+        Row: {
+          car_id: string;
+          created_at: string;
+          event_id: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          car_id: string;
+          created_at?: string;
+          event_id: string;
+          user_id?: string;
+        };
+        Update: {
+          car_id?: string;
+          created_at?: string;
+          event_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'event_rsvp_cars_car_id_user_id_fkey';
+            columns: ['car_id', 'user_id'];
+            isOneToOne: false;
+            referencedRelation: 'garage_cars';
+            referencedColumns: ['id', 'owner_id'];
+          },
+          {
+            foreignKeyName: 'event_rsvp_cars_event_id_user_id_fkey';
+            columns: ['event_id', 'user_id'];
+            isOneToOne: false;
+            referencedRelation: 'event_rsvps';
+            referencedColumns: ['event_id', 'user_id'];
+          },
+        ];
+      };
       event_rsvps: {
         Row: {
           created_at: string;
@@ -1687,6 +1724,10 @@ export type Database = {
           p_dealership_id: string;
           p_status: Database['public']['Enums']['verification_status'];
         };
+        Returns: undefined;
+      };
+      set_event_rsvp_cars: {
+        Args: { p_car_ids: string[]; p_event_id: string };
         Returns: undefined;
       };
       set_featured: { Args: { p_featured: boolean; p_user_id: string }; Returns: undefined };
