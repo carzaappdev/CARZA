@@ -1,5 +1,6 @@
 import { distanceMiles, type LatLng } from '@carza/shared';
 import type { Tables, TypedClient } from '../index';
+import type { GarageCar } from './garage';
 import type { PostAuthor } from './posts';
 
 const EVENT_FIELDS = `
@@ -158,12 +159,61 @@ export async function getEvent(client: TypedClient, id: string, viewerId: string
   ]);
   if (attendees.error) throw attendees.error;
   if (mine.error) throw mine.error;
+  const [cars, viewerCars] = await Promise.all([
+    getEventCars(client, id),
+    // Fetched on their own so a big meet's list limit can't hide (and then drop) the viewer's picks.
+    viewerId && mine.data
+      ? client.from('event_rsvp_cars').select('car_id').eq('event_id', id).eq('user_id', viewerId)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (viewerCars.error) throw viewerCars.error;
   return {
     ...event,
     attendees: attendees.data.flatMap((r) => (r.user ? [r.user] : [])),
     viewerGoing: mine.data !== null,
+    cars,
+    viewerCarIds: viewerCars.data.map((c) => c.car_id),
     friendsGoing: viewerId ? await getFriendsGoing(client, id, viewerId) : [],
   };
+}
+
+export type EventCar = Pick<
+  GarageCar,
+  'id' | 'year' | 'make' | 'model' | 'nickname' | 'photoPath'
+> & {
+  owner: PostAuthor;
+};
+
+/** Cars guests are bringing, in the order they were added (up to 60 shown). */
+async function getEventCars(client: TypedClient, eventId: string): Promise<EventCar[]> {
+  const { data, error } = await client
+    .from('event_rsvp_cars')
+    .select(
+      `car:garage_cars!event_rsvp_cars_car_id_user_id_fkey (
+        id, year, nickname, photo_path,
+        make:vehicle_makes ( name ), model:vehicle_models ( name ),
+        owner:profiles!garage_cars_owner_id_fkey ( id, username, display_name, avatar_path, official )
+      )`,
+    )
+    .eq('event_id', eventId)
+    .order('created_at', { ascending: true })
+    .limit(60);
+  if (error) throw error;
+  return data.flatMap(({ car }): EventCar[] =>
+    car?.owner
+      ? [
+          {
+            id: car.id,
+            year: car.year,
+            make: car.make?.name ?? '',
+            model: car.model?.name ?? '',
+            nickname: car.nickname,
+            photoPath: car.photo_path,
+            owner: car.owner,
+          },
+        ]
+      : [],
+  );
 }
 
 /** People the viewer follows who are going (up to 500 guests checked, which covers any meet). */

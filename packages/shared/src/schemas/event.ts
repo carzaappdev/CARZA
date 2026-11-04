@@ -51,5 +51,11 @@ export type EventFormInput = z.input<typeof eventFormSchema>;
 
 export const eventIdSchema = z.object({ eventId: z.guid() });
 export const setRsvpSchema = z.object({ eventId: z.guid(), going: z.boolean() });
+/** Cars from your garage you're bringing to an event you're going to. */
+export const EVENT_MAX_CARS = 3;
+export const setRsvpCarsSchema = z.object({
+  eventId: z.guid(),
+  carIds: z.array(z.guid()).max(EVENT_MAX_CARS),
+});
 /** Edits may keep a start time that has passed (the meet is under way); the database refuses moving one into the past. */
 export const updateEventSchema = z.object({ eventId: z.guid(), event: eventFields });

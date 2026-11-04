@@ -5,13 +5,21 @@ import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { ClockIcon, MapPinIcon, UsersIcon } from 'lucide-react';
 import { z } from 'zod';
-import { getEvent, getEventPosts } from '@carza/db';
-import { eventHasEnded, formatCount, formatEventWhen, googleCalendarUrl } from '@carza/shared';
+import { getEvent, getEventPosts, getGarage } from '@carza/db';
+import {
+  carTitle,
+  eventHasEnded,
+  formatCount,
+  formatEventWhen,
+  googleCalendarUrl,
+} from '@carza/shared';
 import { AddToCalendar } from '@/components/events/add-to-calendar';
 import { DateBadge } from '@/components/events/event-card';
 import { EventCover } from '@/components/events/event-cover';
 import { HostMenu } from '@/components/events/host-menu';
 import { RsvpButton } from '@/components/events/rsvp-button';
+import { RsvpCars } from '@/components/events/rsvp-cars';
+import { CarThumb } from '@/components/garage/car-thumb';
 import { Composer } from '@/components/feed/composer';
 import { PostCard } from '@/components/feed/post-card';
 import { UserAvatar } from '@/components/feed/user-avatar';
@@ -48,9 +56,12 @@ export default async function EventPage({ params }: Props) {
   if (!event) notFound();
 
   const user = await getUser();
-  const [viewer, posts] = await Promise.all([
+  const supabase = await createClient();
+  const [viewer, posts, garage] = await Promise.all([
     getViewer(),
-    getEventPosts(await createClient(), event.id, user?.id ?? null),
+    getEventPosts(supabase, event.id, user?.id ?? null),
+    // Your garage, to pick the cars you're bringing (only while you're going).
+    user && event.viewerGoing ? getGarage(supabase, user.id) : Promise.resolve([]),
   ]);
   const calendar = eventCalendarInfo(event, clientEnv.NEXT_PUBLIC_SITE_URL);
   const isHost = user?.id === event.host?.id;
@@ -168,6 +179,10 @@ export default async function EventPage({ params }: Props) {
           </div>
         ) : null}
 
+        {!cancelled && !ended && event.viewerGoing ? (
+          <RsvpCars eventId={event.id} garage={garage} initial={event.viewerCarIds} />
+        ) : null}
+
         {!cancelled ? (
           <div className="flex gap-2">
             {!ended ? (
@@ -245,6 +260,39 @@ export default async function EventPage({ params }: Props) {
                   +{formatCount(event.going_count - event.attendees.length)}
                 </li>
               ) : null}
+            </ul>
+          </section>
+        ) : null}
+
+        {event.cars.length > 0 ? (
+          <section aria-labelledby="cars-heading" className="flex flex-col gap-3">
+            <h2 id="cars-heading" className="font-display text-lg font-bold">
+              Cars coming
+            </h2>
+            <ul className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1">
+              {event.cars.map((car) => (
+                <li key={car.id} className="w-40 shrink-0 snap-start">
+                  <Link
+                    href={`/garage/${car.id}` as Route}
+                    className="focus-visible:ring-ring/50 flex flex-col gap-1.5 rounded-xl outline-none focus-visible:ring-[3px]"
+                  >
+                    <CarThumb path={car.photoPath} className="aspect-[4/3] w-full" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-semibold">
+                        {car.nickname ?? carTitle(car)}
+                      </span>
+                      <span className="text-muted-foreground flex items-center gap-1 text-xs">
+                        <UserAvatar
+                          name={car.owner.display_name}
+                          path={car.owner.avatar_path}
+                          className="size-4"
+                        />
+                        <span className="truncate">@{car.owner.username}</span>
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </section>
         ) : null}
