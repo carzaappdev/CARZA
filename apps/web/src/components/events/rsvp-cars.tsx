@@ -6,19 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useOptimistic, useState, useTransition } from 'react';
 import { CheckIcon, PlusIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import type { GarageCar } from '@carza/db';
 import { EVENT_MAX_CARS, carTitle } from '@carza/shared';
 import { CarThumb } from '@/components/garage/car-thumb';
 import { setRsvpCars } from '@/lib/actions/events';
 import { cn } from '@/lib/utils';
-
-type Car = {
-  id: string;
-  year: number;
-  make: string;
-  model: string;
-  nickname: string | null;
-  photoPath: string | null;
-};
 
 /** Pick up to 3 cars from your garage to bring. Only shown to guests who are going. */
 export function RsvpCars({
@@ -27,7 +19,7 @@ export function RsvpCars({
   initial,
 }: {
   eventId: string;
-  garage: Car[];
+  garage: GarageCar[];
   initial: string[];
 }) {
   const router = useRouter();

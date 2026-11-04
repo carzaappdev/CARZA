@@ -1,5 +1,6 @@
 import { distanceMiles, type LatLng } from '@carza/shared';
 import type { Tables, TypedClient } from '../index';
+import type { GarageCar } from './garage';
 import type { PostAuthor } from './posts';
 
 const EVENT_FIELDS = `
@@ -169,13 +170,10 @@ export async function getEvent(client: TypedClient, id: string, viewerId: string
   };
 }
 
-export type EventCar = {
-  id: string;
-  year: number;
-  make: string;
-  model: string;
-  nickname: string | null;
-  photoPath: string | null;
+export type EventCar = Pick<
+  GarageCar,
+  'id' | 'year' | 'make' | 'model' | 'nickname' | 'photoPath'
+> & {
   owner: PostAuthor;
 };
 
