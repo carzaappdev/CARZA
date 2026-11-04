@@ -159,13 +159,20 @@ export async function getEvent(client: TypedClient, id: string, viewerId: string
   ]);
   if (attendees.error) throw attendees.error;
   if (mine.error) throw mine.error;
-  const cars = await getEventCars(client, id);
+  const [cars, viewerCars] = await Promise.all([
+    getEventCars(client, id),
+    // Fetched on their own so a big meet's list limit can't hide (and then drop) the viewer's picks.
+    viewerId && mine.data
+      ? client.from('event_rsvp_cars').select('car_id').eq('event_id', id).eq('user_id', viewerId)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (viewerCars.error) throw viewerCars.error;
   return {
     ...event,
     attendees: attendees.data.flatMap((r) => (r.user ? [r.user] : [])),
     viewerGoing: mine.data !== null,
     cars,
-    viewerCarIds: viewerId ? cars.filter((c) => c.owner.id === viewerId).map((c) => c.id) : [],
+    viewerCarIds: viewerCars.data.map((c) => c.car_id),
     friendsGoing: viewerId ? await getFriendsGoing(client, id, viewerId) : [],
   };
 }

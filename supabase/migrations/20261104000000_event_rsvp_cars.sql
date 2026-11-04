@@ -85,8 +85,12 @@ begin
   delete from public.event_rsvp_cars c
   where c.event_id = p_event_id and c.user_id = (select auth.uid())
     and c.car_id <> all (coalesce(p_car_ids, '{}'));
+  -- Only new cars: the insert trigger counts what's already there, so re-sending one would trip the cap.
   insert into public.event_rsvp_cars (event_id, car_id)
   select p_event_id, x from unnest(coalesce(p_car_ids, '{}')) as x
+  where not exists (
+    select 1 from public.event_rsvp_cars c where c.event_id = p_event_id and c.car_id = x
+  )
   on conflict (event_id, car_id) do nothing;
 end;
 $$;

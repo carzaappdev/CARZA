@@ -71,6 +71,13 @@ describe('event_rsvp_cars', () => {
     });
     expect(error).toBeNull();
     expect(await carsOf(guest)).toEqual([...three].sort());
+    // Saving the same 3 again (a double tap) is fine.
+    const again = await guest.client.rpc('set_event_rsvp_cars', {
+      p_event_id: eventId,
+      p_car_ids: three,
+    });
+    expect(again.error).toBeNull();
+    expect(await carsOf(guest)).toEqual([...three].sort());
   });
 
   it('refuses a 4th car, through the RPC or a direct insert', async () => {
