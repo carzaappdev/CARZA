@@ -1,9 +1,10 @@
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
-import { MessagesSquareIcon } from 'lucide-react';
-import { getProfile, getGarage, getProfilePosts } from '@carza/db';
+import { ClapperboardIcon, MessagesSquareIcon } from 'lucide-react';
+import { getProfile, getGarage, getProfilePosts, getProfileReels } from '@carza/db';
 import { formatCount } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { FollowButton } from '@/components/feed/follow-button';
@@ -14,10 +15,13 @@ import { MessageButton } from '@/components/messages/message-button';
 import { SafetyMenu } from '@/components/safety/safety-menu';
 import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
+import { RichText } from '@/components/feed/rich-text';
 import { UserAvatar } from '@/components/feed/user-avatar';
+import { ProfileReelGrid } from '@/components/reels/profile-reel-grid';
 import { ShareButton } from '@/components/listings/share-button';
 import { Button } from '@/components/ui/button';
 import { getUser, isAdmin } from '@/lib/auth';
+import { publicStorageUrl } from '@/lib/storage';
 import { createClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 
@@ -35,9 +39,21 @@ const loadProfile = cache(async (username: string) => {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await loadProfile((await params).username);
   if (!profile) return { title: 'Profile not found' };
+  const title = `${profile.display_name} (@${profile.username})`;
+  const description = profile.bio ?? `${profile.display_name} is on Carza.`;
   return {
-    title: `${profile.display_name} (@${profile.username})`,
-    description: profile.bio ?? undefined,
+    title,
+    description,
+    ...(profile.avatar_path && {
+      openGraph: {
+        title,
+        description,
+        type: 'profile',
+        username: profile.username,
+        images: [publicStorageUrl('avatars', profile.avatar_path)],
+      },
+      twitter: { card: 'summary' },
+    }),
   };
 }
 
@@ -46,28 +62,37 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const profile = await loadProfile(username);
   if (!profile) notFound();
 
-  const tab = (await searchParams).tab === 'replies' ? 'replies' : 'posts';
+  const tabParam = (await searchParams).tab;
+  const tab = TABS.find((t) => t !== 'posts' && t === tabParam) ?? 'posts';
   const user = await getUser();
   const viewerId = user?.id ?? null;
   const isOwn = viewerId === profile.id;
+  const base = `/u/${profile.username}`;
   const supabase = await createClient();
-  const [posts, garage, admin, invites] = await Promise.all([
-    getProfilePosts(supabase, profile.id, tab, viewerId),
+  const [posts, reels, garage, admin, invites] = await Promise.all([
+    tab === 'reels' ? [] : getProfilePosts(supabase, profile.id, tab, viewerId),
+    tab === 'reels' ? getProfileReels(supabase, profile.id) : [],
     getGarage(supabase, profile.id),
     viewerId && !isOwn ? isAdmin() : false,
     isOwn ? supabase.rpc('my_invite_count').then((r) => r.data ?? 0) : 0,
   ]);
-  const base = `/u/${profile.username}`;
-
   return (
     <div className="mx-auto w-full max-w-[640px] flex-1 sm:border-x">
       <header className="flex flex-col gap-4 px-4 pt-6 pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display truncate text-2xl font-bold tracking-tight">
-              {profile.display_name}
+            <h1 className="font-display flex items-center gap-1.5 text-2xl font-bold tracking-tight">
+              <span className="truncate">{profile.display_name}</span>
+              <OfficialBadge official={profile.official} className="size-6" />
             </h1>
-            <p className="text-muted-foreground truncate">@{profile.username}</p>
+            <p className="text-muted-foreground flex min-w-0 items-center gap-2">
+              <span className="truncate">@{profile.username}</span>
+              {profile.followsViewer ? (
+                <span className="bg-muted text-foreground shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium">
+                  Follows you
+                </span>
+              ) : null}
+            </p>
           </div>
           <div className="flex items-start gap-1">
             <UserAvatar name={profile.display_name} path={profile.avatar_path} large />
@@ -90,25 +115,33 @@ export default async function ProfilePage({ params, searchParams }: Props) {
           <FeatureToggle userId={profile.id} featured={profile.featured_at !== null} />
         ) : null}
         {profile.bio ? (
-          <p className="text-[15px] leading-[1.4] whitespace-pre-wrap">{profile.bio}</p>
+          <p className="text-[15px] leading-[1.4] break-words whitespace-pre-wrap">
+            <RichText text={profile.bio} />
+          </p>
         ) : null}
         <GarageShowcase cars={garage} />
-        <p className="text-muted-foreground text-sm">
-          <span className="text-foreground font-semibold tabular-nums">
-            {formatCount(profile.followerCount)}
-          </span>{' '}
-          {profile.followerCount === 1 ? 'follower' : 'followers'}
-          <span aria-hidden> · </span>
-          <span className="text-foreground font-semibold tabular-nums">
-            {formatCount(profile.followingCount)}
-          </span>{' '}
-          following
+        <p className="text-muted-foreground flex flex-wrap items-center gap-x-1 text-sm">
+          <Link href={`${base}/followers` as Route} className="hover:underline">
+            <span className="text-foreground font-semibold tabular-nums">
+              {formatCount(profile.followerCount)}
+            </span>{' '}
+            {profile.followerCount === 1 ? 'follower' : 'followers'}
+          </Link>
+          <span aria-hidden>·</span>
+          <Link href={`${base}/following` as Route} className="hover:underline">
+            <span className="text-foreground font-semibold tabular-nums">
+              {formatCount(profile.followingCount)}
+            </span>{' '}
+            following
+          </Link>
           {profile.city ? (
             <>
-              <span aria-hidden> · </span>
-              {profile.region ? `${profile.city}, ${profile.region}` : profile.city}
+              <span aria-hidden>·</span>
+              <span>{profile.region ? `${profile.city}, ${profile.region}` : profile.city}</span>
             </>
           ) : null}
+          <span aria-hidden>·</span>
+          <span>Joined {joinedLabel(profile.created_at)}</span>
         </p>
         {isOwn ? (
           <div className="grid grid-cols-2 gap-2">
@@ -116,7 +149,9 @@ export default async function ProfilePage({ params, searchParams }: Props) {
               <Link href="/account/settings">Edit profile</Link>
             </Button>
             <Button asChild variant="outline" className="rounded-xl">
-              <Link href="/account/garage">{garage.length ? 'Edit garage' : 'Add your car'}</Link>
+              <Link href={garage.length ? '/account/garage' : '/account/garage/new'}>
+                {garage.length ? 'My Garage' : 'Add your car'}
+              </Link>
             </Button>
             <ShareButton
               title="Join me on Carza"
@@ -132,6 +167,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
             <FollowButton
               userId={profile.id}
               following={profile.viewerFollows}
+              followsYou={profile.followsViewer}
               signedIn={viewerId !== null}
               className="rounded-xl"
             />
@@ -144,11 +180,11 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         )}
       </header>
 
-      <nav aria-label="Profile sections" className="grid grid-cols-2 border-b">
-        {(['posts', 'replies'] as const).map((t) => (
+      <nav aria-label="Profile sections" className="grid grid-cols-3 border-b">
+        {TABS.map((t) => (
           <Link
             key={t}
-            href={(t === 'posts' ? base : `${base}?tab=replies`) as Route}
+            href={(t === 'posts' ? base : `${base}?tab=${t}`) as Route}
             aria-current={tab === t ? 'page' : undefined}
             className={cn(
               'focus-visible:ring-ring/50 relative flex h-12 items-center justify-center text-[15px] font-semibold capitalize outline-none focus-visible:ring-[3px] focus-visible:ring-inset',
@@ -163,7 +199,26 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         ))}
       </nav>
 
-      {posts.length > 0 ? (
+      {tab === 'reels' ? (
+        reels.length > 0 ? (
+          <ProfileReelGrid reels={reels} />
+        ) : (
+          <div className="px-4 py-8">
+            <EmptyState
+              Icon={ClapperboardIcon}
+              title="No reels yet"
+              body={isOwn ? 'Short videos you post show up here.' : undefined}
+              action={
+                isOwn ? (
+                  <Button asChild className="rounded-full">
+                    <Link href="/reels/new">Post a reel</Link>
+                  </Button>
+                ) : undefined
+              }
+            />
+          </div>
+        )
+      ) : posts.length > 0 ? (
         <ul>
           {posts.map((post) => (
             <li key={post.id}>
@@ -190,3 +245,8 @@ export default async function ProfilePage({ params, searchParams }: Props) {
     </div>
   );
 }
+
+const TABS = ['posts', 'replies', 'reels'] as const;
+
+const joinedLabel = (iso: string) =>
+  new Date(iso).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' });

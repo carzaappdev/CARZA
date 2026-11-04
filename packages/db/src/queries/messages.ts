@@ -40,6 +40,7 @@ export async function getInbox(client: TypedClient, viewerId: string): Promise<I
       username: r.other_username,
       display_name: r.other_display_name,
       avatar_path: r.other_avatar_path ?? null,
+      official: r.other_official,
     },
     lastBody: r.last_body,
     lastFromViewer: r.last_sender_id === viewerId,
@@ -98,7 +99,7 @@ export async function getConversation(
   const [profile, block, page] = await Promise.all([
     client
       .from('profiles')
-      .select('id, username, display_name, avatar_path')
+      .select('id, username, display_name, avatar_path, official')
       .eq('id', otherId)
       .maybeSingle(),
     client

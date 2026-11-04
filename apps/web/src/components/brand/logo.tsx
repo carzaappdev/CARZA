@@ -9,9 +9,14 @@ const MARK = { width: 1409, height: 455 } as const;
 export function CarzaMark({
   tone = 'dark',
   className = 'h-10 w-auto',
+  sizes = '180px',
+  loading = 'eager',
 }: {
   tone?: Tone;
   className?: string;
+  /** Rendered width, so the optimizer sends a small file instead of the 1409px original. */
+  sizes?: string;
+  loading?: 'eager' | 'lazy';
 }) {
   return (
     <Image
@@ -19,7 +24,8 @@ export function CarzaMark({
       alt=""
       width={MARK.width}
       height={MARK.height}
-      priority
+      sizes={sizes}
+      loading={loading}
       className={className}
     />
   );

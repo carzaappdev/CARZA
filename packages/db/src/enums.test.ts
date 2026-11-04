@@ -20,6 +20,7 @@ describe('shared enum constants match the database', () => {
     ['report_target', shared.REPORT_TARGETS],
     ['report_reason', shared.REPORT_REASONS],
     ['report_status', shared.REPORT_STATUSES],
+    ['part_category', shared.PART_CATEGORIES],
   ] as const;
 
   it.each(pairs)('%s', (name, values) => {

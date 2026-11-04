@@ -4,6 +4,7 @@ import {
   BellIcon,
   CalendarCheckIcon,
   CalendarClockIcon,
+  CalendarCogIcon,
   CalendarXIcon,
   HeartIcon,
   type LucideIcon,
@@ -32,6 +33,7 @@ const ICONS: Partial<Record<NotificationView['type'], [LucideIcon, string]>> = {
   event_rsvp: [CalendarCheckIcon, 'bg-amber-500'],
   event_reminder: [CalendarClockIcon, 'bg-amber-500'],
   event_cancelled: [CalendarXIcon, 'bg-zinc-500'],
+  event_updated: [CalendarCogIcon, 'bg-amber-500'],
 };
 
 export default async function NotificationsPage() {

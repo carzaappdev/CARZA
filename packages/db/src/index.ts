@@ -23,3 +23,4 @@ export * from './queries/reels';
 export * from './queries/notifications';
 export * from './queries/garage';
 export * from './queries/messages';
+export * from './queries/profiles';

@@ -24,6 +24,11 @@ describe('routeRedirect', () => {
     expect(routeRedirect('/sign-in', '', false)).toBeNull();
   });
 
+  it('sends an auth code that landed on the home page to the callback', () => {
+    expect(routeRedirect('/', '?code=abc', false)).toBe('/auth/callback?code=abc');
+    expect(routeRedirect('/', '?feed=following', true)).toBeNull();
+  });
+
   it('leaves public routes alone', () => {
     expect(routeRedirect('/', '', false)).toBeNull();
     expect(routeRedirect('/listings/123', '', true)).toBeNull();

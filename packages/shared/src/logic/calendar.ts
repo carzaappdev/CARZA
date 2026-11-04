@@ -25,7 +25,7 @@ const endOf = (e: CalendarEvent) =>
 
 /** RFC 5545 text escaping. */
 const escapeText = (s: string) =>
-  s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 
 /** Lines longer than 75 octets are folded with CRLF + space (RFC 5545 §3.1). */
 function fold(line: string) {

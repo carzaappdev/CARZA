@@ -74,4 +74,39 @@ describe('founding members', () => {
     const { data: forBoss } = await boss.client.rpc('suggested_follows', { p_limit: 1 });
     expect(forBoss![0]).toMatchObject({ featured: true });
   });
+
+  it('keeps brand usernames and the official badge for the official account', async () => {
+    const taken = await alice.client
+      .from('profiles')
+      .update({ username: 'carza' })
+      .eq('id', alice.id);
+    expect(taken.error?.code).toBe('23505');
+    const staff = await alice.client
+      .from('profiles')
+      .update({ username: 'support' })
+      .eq('id', alice.id);
+    expect(staff.error?.code).toBe('23505');
+    // A name that merely starts with the brand is fine.
+    const fan = `carzafan_${alice.id.slice(0, 6)}`;
+    expect(
+      (await alice.client.from('profiles').update({ username: fan }).eq('id', alice.id)).error,
+    ).toBeNull();
+    await admin.from('profiles').update({ username: aliceName }).eq('id', alice.id);
+
+    const selfBadge = await alice.client
+      .from('profiles')
+      .update({ official: true } as never)
+      .eq('id', alice.id);
+    expect(selfBadge.error?.code).toBe('42501');
+
+    // Only the database owner makes an account official; then it can take the brand name and leads
+    // suggestions.
+    const { error } = await admin
+      .from('profiles')
+      .update({ official: true, username: 'carza' })
+      .eq('id', bob.id);
+    expect(error).toBeNull();
+    const { data } = await boss.client.rpc('suggested_follows', { p_limit: 1 });
+    expect(data![0]).toMatchObject({ id: bob.id, official: true });
+  });
 });

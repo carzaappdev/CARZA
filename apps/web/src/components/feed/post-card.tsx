@@ -2,6 +2,7 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
+import { OfficialBadge } from '@/components/founders/official-badge';
 import { CalendarDaysIcon } from 'lucide-react';
 import { formatRelativeTime } from '@carza/shared';
 import type { PostView } from '@carza/db';
@@ -70,6 +71,7 @@ export function PostCard({
             >
               {post.author.display_name}
             </Link>
+            <OfficialBadge official={post.author.official} />
             {/* On narrow screens the handle gives way first, then the name; the time always shows. */}
             <span className="text-muted-foreground min-w-0 shrink-[3] truncate">
               @{post.author.username}

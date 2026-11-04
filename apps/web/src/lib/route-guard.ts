@@ -31,6 +31,9 @@ export function hiddenForLaunch(pathname: string) {
  * with getUser() instead. Role/membership checks happen in layouts and actions, not here.
  */
 export function routeRedirect(pathname: string, search: string, signedIn: boolean): string | null {
+  // A PKCE code on the home page means Supabase fell back to the Site URL (redirect not allow-listed):
+  // finish the sign-in at the callback instead of dropping it.
+  if (pathname === '/' && new URLSearchParams(search).has('code')) return `/auth/callback${search}`;
   if (!signedIn && PROTECTED_PREFIXES.some((p) => under(pathname, p))) {
     return `/sign-in?next=${encodeURIComponent(safeNextPath(pathname + search))}`;
   }

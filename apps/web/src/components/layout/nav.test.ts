@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dealerNav, isActive, TAB_BAR } from './nav';
+import { dealerNav, isActive, isReelPlayer, TAB_BAR } from './nav';
 
 const activeLabels = (items: typeof TAB_BAR, pathname: string) =>
   items.filter((item) => isActive(item, pathname, items)).map((item) => item.label);
@@ -27,5 +27,15 @@ describe('isActive', () => {
     const nav = dealerNav('d1');
     expect(activeLabels(nav, '/dealer/d1')).toEqual(['Dashboard']);
     expect(activeLabels(nav, '/dealer/d1/inventory/import')).toEqual(['Inventory']);
+  });
+});
+
+describe('isReelPlayer', () => {
+  it('is true on the reels feed and a single reel, not the uploader', () => {
+    expect(isReelPlayer('/reels')).toBe(true);
+    expect(isReelPlayer('/reels/0b5c9a1e-1f2d-4c3b-9a8e-7d6c5b4a3f21')).toBe(true);
+    expect(isReelPlayer('/reels/new')).toBe(false);
+    expect(isReelPlayer('/')).toBe(false);
+    expect(isReelPlayer('/events')).toBe(false);
   });
 });
