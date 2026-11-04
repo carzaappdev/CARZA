@@ -11,6 +11,7 @@ import { FollowButton } from '@/components/feed/follow-button';
 import { FeatureToggle } from '@/components/founders/feature-toggle';
 import { ProfileBadges } from '@/components/founders/founder-badge';
 import { GarageShowcase } from '@/components/garage/garage-showcase';
+import { MessageButton } from '@/components/messages/message-button';
 import { SafetyMenu } from '@/components/safety/safety-menu';
 import { UnblockButton } from '@/components/safety/unblock-button';
 import { PostCard } from '@/components/feed/post-card';
@@ -162,13 +163,20 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         ) : profile.viewerBlocked ? (
           <UnblockButton userId={profile.id} username={profile.username} />
         ) : (
-          <FollowButton
-            userId={profile.id}
-            following={profile.viewerFollows}
-            followsYou={profile.followsViewer}
-            signedIn={viewerId !== null}
-            className="w-full rounded-xl"
-          />
+          <div className="grid grid-cols-2 gap-2">
+            <FollowButton
+              userId={profile.id}
+              following={profile.viewerFollows}
+              followsYou={profile.followsViewer}
+              signedIn={viewerId !== null}
+              className="rounded-xl"
+            />
+            <MessageButton
+              userId={profile.id}
+              signedIn={viewerId !== null}
+              className="rounded-xl"
+            />
+          </div>
         )}
       </header>
 

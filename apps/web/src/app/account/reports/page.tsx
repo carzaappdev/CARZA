@@ -24,6 +24,9 @@ function describe(type: string, id: string, snapshot: Record<string, unknown>) {
       return { href: `/events/${id}`, preview: text('title') };
     case 'user':
       return { href: `/u/${text('username')}`, preview: `@${text('username')} · ${text('bio')}` };
+    case 'message':
+      // Admins can't open someone's DMs; the reported message is kept in the snapshot.
+      return { href: null, preview: text('body') };
     default:
       return { href: null, preview: type };
   }
@@ -88,7 +91,10 @@ export default async function ReportsPage() {
                       Open
                     </Link>
                   ) : null}
-                  <ReportActions reportId={r.id} canRemove={r.target_type !== 'user'} />
+                  <ReportActions
+                    reportId={r.id}
+                    canRemove={r.target_type !== 'user' && r.target_type !== 'message'}
+                  />
                 </div>
               </li>
             );
