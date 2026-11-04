@@ -17,7 +17,9 @@ import { describeNotification, formatRelativeTime } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { UserAvatar } from '@/components/feed/user-avatar';
 import { MarkNotificationsRead } from '@/components/notifications/mark-read';
+import { PushPrompt } from '@/components/pwa/push-prompt';
 import { requireUser } from '@/lib/auth';
+import { vapidPublicKey } from '@/lib/push';
 import { createClient } from '@/lib/supabase/server';
 import { cn } from '@/lib/utils';
 
@@ -38,7 +40,10 @@ const ICONS: Partial<Record<NotificationView['type'], [LucideIcon, string]>> = {
 
 export default async function NotificationsPage() {
   await requireUser('/notifications');
-  const notifications = await getNotifications(await createClient());
+  const [notifications, publicKey] = await Promise.all([
+    getNotifications(await createClient()),
+    vapidPublicKey(),
+  ]);
   const items = notifications.flatMap((n) => {
     const described = describeNotification(n.type, n.data, n.actor);
     return described ? [{ ...n, ...described }] : [];
@@ -50,6 +55,7 @@ export default async function NotificationsPage() {
       <h1 className="font-display border-b px-4 py-4 text-xl font-bold tracking-tight">
         Notifications
       </h1>
+      <PushPrompt publicKey={publicKey} />
       {hasUnread ? <MarkNotificationsRead /> : null}
       {items.length ? (
         <ul>

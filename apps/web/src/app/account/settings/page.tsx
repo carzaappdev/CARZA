@@ -2,16 +2,19 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { DownloadIcon, KeyRoundIcon, LogOutIcon } from 'lucide-react';
+import { mutedPushCategories } from '@carza/shared';
 import { DeleteAccount } from '@/components/account/delete-account';
 import { HomeZip } from '@/components/account/home-zip';
 import { PageHeader } from '@/components/layout/page-header';
 import { ProfileForm } from '@/components/feed/profile-form';
+import { PushSettings } from '@/components/pwa/push-settings';
 import { BlockedList } from '@/components/safety/blocked-list';
 import { ThemePicker } from '@/components/theme/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { signOut } from '@/app/auth/actions';
 import { signOutEverywhere } from '@/lib/actions/account';
 import { requireUser } from '@/lib/auth';
+import { vapidPublicKey } from '@/lib/push';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Settings' };
@@ -19,19 +22,27 @@ export const metadata: Metadata = { title: 'Settings' };
 export default async function SettingsPage() {
   const user = await requireUser('/account/settings');
   const supabase = await createClient();
-  const [{ data: profile }, { data: blocks }, { data: home }] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('display_name, username, bio, avatar_path, city, region')
-      .eq('id', user.id)
-      .single(),
-    supabase
-      .from('blocks')
-      .select('profile:profiles!blocks_blocked_id_fkey ( id, username, display_name, avatar_path )')
-      .eq('blocker_id', user.id)
-      .order('created_at', { ascending: false }),
-    supabase.from('profile_private').select('postal_code').eq('user_id', user.id).maybeSingle(),
-  ]);
+  const [{ data: profile }, { data: blocks }, { data: privateProfile }, publicKey] =
+    await Promise.all([
+      supabase
+        .from('profiles')
+        .select('display_name, username, bio, avatar_path, city, region')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('blocks')
+        .select(
+          'profile:profiles!blocks_blocked_id_fkey ( id, username, display_name, avatar_path )',
+        )
+        .eq('blocker_id', user.id)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('profile_private')
+        .select('postal_code, push_muted')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      vapidPublicKey(),
+    ]);
   const providers = (user.app_metadata.providers as string[] | undefined) ?? [];
   const hasPassword = providers.includes('email');
 
@@ -55,7 +66,14 @@ export default async function SettingsPage() {
             ? `Your profile shows ${profile.city}, ${profile.region}. We use your ZIP to find events near you.`
             : 'Add your ZIP to see events near you. Only your city shows on your profile.'}
         </p>
-        <HomeZip initial={home?.postal_code ?? null} />
+        <HomeZip initial={privateProfile?.postal_code ?? null} />
+      </Section>
+
+      <Section id="alerts" title="Notifications">
+        <PushSettings
+          publicKey={publicKey}
+          initialMuted={mutedPushCategories(privateProfile?.push_muted ?? [])}
+        />
       </Section>
 
       <Section id="display" title="Display">
