@@ -3,45 +3,90 @@
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { toast } from 'sonner';
+import type { ReportDecision } from '@carza/shared';
 import { Button } from '@/components/ui/button';
-import { resolveReport } from '@/lib/actions/moderation';
+import { resolveReport, setSuspended } from '@/lib/actions/moderation';
 
-export function ReportActions({ reportId, canRemove }: { reportId: string; canRemove: boolean }) {
+const CONFIRM: Record<ReportDecision, string | null> = {
+  dismiss: null,
+  remove: 'Remove this for everyone?',
+  suspend:
+    'Suspend this account? They’ll be signed out and everything they posted will be hidden until you lift it.',
+  escalate:
+    'Escalate for child safety? The account is suspended and the files are moved out of public view and kept as evidence. Nothing is deleted. You must then report it to NCMEC.',
+};
+const DONE: Record<ReportDecision, string> = {
+  dismiss: 'Dismissed',
+  remove: 'Removed',
+  suspend: 'Account suspended',
+  escalate: 'Escalated. Now file the NCMEC report.',
+};
+
+export function ReportActions({
+  reportId,
+  canRemove,
+  canEscalate,
+}: {
+  reportId: string;
+  canRemove: boolean;
+  canEscalate: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const run = (decision: 'remove' | 'dismiss') =>
+  const run = (decision: ReportDecision) =>
     startTransition(async () => {
-      if (decision === 'remove' && !window.confirm('Remove this for everyone?')) return;
+      const question = CONFIRM[decision];
+      if (question && !window.confirm(question)) return;
       const result = await resolveReport({ reportId, decision });
-      if (!result.ok) {
-        toast.error(result.error.message);
-        return;
-      }
-      toast.success(decision === 'remove' ? 'Removed' : 'Dismissed');
+      if (!result.ok) toast.error(result.error.message, { duration: 15000 });
+      else toast.success(DONE[decision]);
       router.refresh();
     });
+  const button = (
+    decision: ReportDecision,
+    label: string,
+    variant: 'outline' | 'destructive' = 'outline',
+  ) => (
+    <Button
+      variant={variant}
+      size="sm"
+      className="rounded-full"
+      disabled={pending}
+      onClick={() => run(decision)}
+    >
+      {label}
+    </Button>
+  );
   return (
-    <div className="ml-auto flex gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="rounded-full"
-        disabled={pending}
-        onClick={() => run('dismiss')}
-      >
-        Dismiss
-      </Button>
-      {canRemove ? (
-        <Button
-          variant="destructive"
-          size="sm"
-          className="rounded-full"
-          disabled={pending}
-          onClick={() => run('remove')}
-        >
-          Remove
-        </Button>
-      ) : null}
+    <div className="ml-auto flex flex-wrap justify-end gap-2">
+      {button('dismiss', 'Dismiss')}
+      {button('suspend', 'Suspend account')}
+      {canRemove ? button('remove', 'Remove', 'destructive') : null}
+      {canEscalate ? button('escalate', 'Escalate', 'destructive') : null}
     </div>
+  );
+}
+
+export function UnsuspendButton({ userId }: { userId: string }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      className="rounded-full"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          if (!window.confirm('Lift this suspension? Their posts become visible again.')) return;
+          const result = await setSuspended({ userId, suspended: false });
+          if (!result.ok) toast.error(result.error.message);
+          else toast.success('Suspension lifted');
+          router.refresh();
+        })
+      }
+    >
+      Lift suspension
+    </Button>
   );
 }
