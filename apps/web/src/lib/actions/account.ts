@@ -8,11 +8,10 @@ import {
   type ActionResult,
 } from '@carza/shared';
 import { getUser } from '@/lib/auth';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { removeUserFiles } from '@/lib/user-files';
 
 /** Buckets where a user's files live under `{user_id}/`. */
-const USER_BUCKETS = ['avatars', 'post-photos', 'reels'] as const;
 
 /** Permanently deletes the signed-in user's account, files and everything they posted. */
 export async function deleteAccount(input: unknown): Promise<ActionResult<never>> {
@@ -41,23 +40,8 @@ export async function deleteAccount(input: unknown): Promise<ActionResult<never>
     return fail('INTERNAL', 'Couldn’t delete your account. Try again.');
   }
 
-  // Then their files. The user no longer exists to prove ownership, so this needs the secret key.
-  const admin = createAdminClient();
-  if (!admin) console.error('deleteAccount: no secret key, files left behind', { userId: user.id });
-  for (const bucket of USER_BUCKETS) {
-    if (!admin) break;
-    const store = admin.storage.from(bucket);
-    // Bounded: at most 5,000 files per bucket, so a stuck listing can't spin forever.
-    for (let page = 0; page < 50; page++) {
-      const { data: files, error: listError } = await store.list(user.id, { limit: 100 });
-      if (listError || !files.length) break;
-      const { error: removeError } = await store.remove(files.map((f) => `${user.id}/${f.name}`));
-      if (removeError) {
-        console.error('deleteAccount: file cleanup failed', { bucket, userId: user.id });
-        break;
-      }
-    }
-  }
+  // Then their files.
+  await removeUserFiles(user.id);
   await supabase.auth.signOut({ scope: 'local' });
   redirect('/');
 }

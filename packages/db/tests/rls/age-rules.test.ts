@@ -53,6 +53,17 @@ describe('date of birth', () => {
       .eq('user_id', noAge.id);
     expect(direct.error).not.toBeNull();
 
+    // Nothing can be created before the age check, even straight through the API.
+    expect((await noAge.client.from('posts').insert({ body: 'hi' })).error?.code).toBe('42501');
+    expect((await noAge.client.from('follows').insert({ followee_id: adult.id })).error?.code).toBe(
+      '42501',
+    );
+    expect(
+      (await noAge.client.rpc('start_direct_conversation', { p_user_id: teen.id })).error?.code,
+    ).toBe('42501');
+    expect((await noAge.client.rpc('can_message', { p_user_id: teen.id })).data).toBe(false);
+    expect((await noAge.client.rpc('can_message', { p_user_id: adult.id })).data).toBe(false);
+
     expect(
       (await noAge.client.rpc('set_birth_date', { p_birth_date: '2999-01-01' })).error?.code,
     ).toBe('22023');
@@ -64,6 +75,12 @@ describe('date of birth', () => {
     expect(
       (await noAge.client.rpc('set_birth_date', { p_birth_date: bornYearsAgo(15) })).error?.code,
     ).toBe('42501');
+    // Even an under-13 date can't delete (or change) an account that already passed.
+    expect(
+      (await noAge.client.rpc('set_birth_date', { p_birth_date: bornYearsAgo(10) })).error?.code,
+    ).toBe('42501');
+    expect((await noAge.client.rpc('my_age_group')).data).toBe('adult');
+    expect((await noAge.client.from('posts').insert({ body: 'hi' })).error).toBeNull();
     expect(
       (await anon().rpc('set_birth_date', { p_birth_date: bornYearsAgo(20) })).error,
     ).not.toBeNull();
@@ -158,5 +175,27 @@ describe('events and age', () => {
     expect(
       (await adult2.client.from('event_rsvps').insert({ event_id: adults.data!.id })).error,
     ).toBeNull();
+
+    // Signed-out visitors don't see 18+ events either.
+    const seenSignedOut = await anon()
+      .from('events')
+      .select('id')
+      .in('id', [open.data!.id, adults.data!.id]);
+    expect(seenSignedOut.data?.map((e) => e.id)).toEqual([open.data!.id]);
+
+    // Teens can't post on an 18+ event's wall, and turning an event 18+ takes them off the guest list.
+    expect(
+      (await teen.client.from('posts').insert({ body: 'see you there', event_id: adults.data!.id }))
+        .error,
+    ).not.toBeNull();
+    expect(
+      (await adult.client.from('events').update({ adults_only: true }).eq('id', open.data!.id))
+        .error,
+    ).toBeNull();
+    const { data: guests } = await admin
+      .from('event_rsvps')
+      .select('user_id')
+      .eq('event_id', open.data!.id);
+    expect(guests?.map((g) => g.user_id)).toEqual([adult.id]);
   });
 });

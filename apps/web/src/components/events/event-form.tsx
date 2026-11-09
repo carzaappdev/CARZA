@@ -319,7 +319,7 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
         <span className="text-[15px]">
           <span className="block font-semibold">18+ only</span>
           <span className="text-muted-foreground text-sm">
-            Members under 18 won’t see this event or be able to RSVP.
+            Only signed-in members who are 18 or older can see this event or RSVP.
           </span>
         </span>
       </label>
