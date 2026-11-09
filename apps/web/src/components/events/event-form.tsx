@@ -25,6 +25,7 @@ export type EventFormValues = {
   postalCode: string;
   capacity: string;
   coverPath: string | null;
+  adultsOnly: boolean;
 };
 
 const inputClass =
@@ -95,6 +96,7 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
       postalCode: v.postalCode,
       capacity: v.capacity ? Number(v.capacity) : null,
       coverPath: v.coverPath,
+      adultsOnly: v.adultsOnly,
     };
     startTransition(async () => {
       const result = eventId ? await updateEvent({ eventId, event }) : await createEvent(event);
@@ -306,6 +308,21 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
         />,
         'RSVPs close when it’s full. You count as one.',
       )}
+
+      <label className="flex items-start gap-3 rounded-lg border p-3">
+        <input
+          type="checkbox"
+          className="mt-0.5 size-5 accent-current"
+          checked={v.adultsOnly}
+          onChange={(e) => set({ adultsOnly: e.target.checked })}
+        />
+        <span className="text-[15px]">
+          <span className="block font-semibold">18+ only</span>
+          <span className="text-muted-foreground text-sm">
+            Only signed-in members who are 18 or older can see this event or RSVP.
+          </span>
+        </span>
+      </label>
 
       <Button
         type="submit"

@@ -34,6 +34,7 @@ export default async function EditEventPage({ params }: { params: Promise<{ id: 
           postalCode: event.postal_code,
           capacity: event.capacity ? String(event.capacity) : '',
           coverPath: event.cover_path,
+          adultsOnly: event.adults_only,
         }}
       />
     </div>

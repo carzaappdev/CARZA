@@ -2,8 +2,10 @@
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { MailCheckIcon } from 'lucide-react';
-import { authErrorMessage, fieldErrors, signUpSchema } from '@carza/shared';
+import { MIN_AGE, ageOn, authErrorMessage, fieldErrors, signUpSchema } from '@carza/shared';
+import { blockAge, useAgeBlocked } from '@/lib/age-block';
 import { createClient } from '@/lib/supabase/browser';
+import { AgeBlocked } from './age-blocked';
 import { Field, FormMessage, PasswordField, SubmitButton, useFocusFirstInvalid } from './fields';
 
 /** `children` (the heading and social buttons) are hidden once the email is sent. */
@@ -13,6 +15,7 @@ export function SignUpForm({ children }: { children: ReactNode }) {
   const [formError, setFormError] = useState<string | null>(null);
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const ageBlocked = useAgeBlocked();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,16 +23,18 @@ export function SignUpForm({ children }: { children: ReactNode }) {
     if (!parsed.success) return setErrors(fieldErrors(parsed.error));
     setErrors({});
     setFormError(null);
+    // Too young: stop here, before anything is sent, and remember it on this device.
+    if ((ageOn(parsed.data.birthDate) ?? 0) < MIN_AGE) return blockAge();
     setPending(true);
 
-    const { email, password, displayName } = parsed.data;
+    const { email, password, displayName, birthDate } = parsed.data;
     const { error } = await createClient().auth.signUp({
       email,
       password,
       // Carza's email template links to /auth/confirm. emailRedirectTo is the fallback for Supabase's
       // default template (PKCE code → /auth/callback), so confirming works either way.
       options: {
-        data: { display_name: displayName },
+        data: { display_name: displayName, birth_date: birthDate },
         emailRedirectTo: `${window.location.origin}/auth/callback?next=/welcome&from=signup`,
       },
     });
@@ -44,6 +49,7 @@ export function SignUpForm({ children }: { children: ReactNode }) {
     setSentTo(email);
   }
 
+  if (ageBlocked) return <AgeBlocked />;
   if (sentTo) return <CheckInbox email={sentTo} onStartOver={() => setSentTo(null)} />;
 
   return (
@@ -65,6 +71,15 @@ export function SignUpForm({ children }: { children: ReactNode }) {
           autoComplete="email"
           required
           error={errors.email}
+        />
+        <Field
+          label="Date of birth"
+          name="birthDate"
+          type="date"
+          autoComplete="bday"
+          required
+          error={errors.birthDate}
+          hint="Private. Never shown on your profile."
         />
         <PasswordField
           label="Password"

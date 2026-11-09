@@ -94,6 +94,7 @@ export function EventCard({
             <span className="flex items-center gap-1.5">
               <UsersIcon className="size-4 shrink-0" aria-hidden />
               {formatCount(event.going_count)} going
+              {event.adults_only ? <span className="font-medium">· 18+</span> : null}
               {spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 10 && !cancelled && !ended ? (
                 <span className="font-medium text-amber-700 dark:text-amber-400">
                   · {spotsLeft} {spotsLeft === 1 ? 'spot' : 'spots'} left

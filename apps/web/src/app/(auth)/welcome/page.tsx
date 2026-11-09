@@ -16,9 +16,10 @@ export default async function WelcomePage() {
   const supabase = await createClient();
   const { data: home } = await supabase
     .from('profile_private')
-    .select('postal_code, onboarded_at')
+    .select('postal_code, onboarded_at, birth_date')
     .eq('user_id', user.id)
     .maybeSingle();
+  if (home && !home.birth_date) redirect('/age');
   // Setup is a one-time thing: once it's done (or skipped through), go to the feed.
   if (home?.onboarded_at) redirect('/');
   // Came from an invite link: follow whoever sent it (only works once, in an account's first week).

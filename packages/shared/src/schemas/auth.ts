@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ageOn } from '../logic/age';
 
 // Mirrors the Supabase Auth password policy (supabase/config.toml + dashboard):
 // at least 10 characters, with letters and digits.
@@ -21,10 +22,22 @@ export const signInSchema = z.object({
   password: z.string().min(1, 'Enter your password.'),
 });
 
+/**
+ * A real date of birth (`YYYY-MM-DD`). Deliberately says nothing about the minimum age: the age screen
+ * must not hint at which answer gets in.
+ */
+export const birthDateSchema = z.string().refine((v) => {
+  const age = ageOn(v);
+  return age !== null && age >= 0 && age <= 120;
+}, 'Enter your date of birth.');
+
+export const setBirthDateSchema = z.object({ birthDate: birthDateSchema });
+
 export const signUpSchema = z.object({
   displayName: z.string().trim().min(1, 'Enter your name.').max(60, 'Use at most 60 characters.'),
   email: emailSchema,
   password: passwordSchema,
+  birthDate: birthDateSchema,
 });
 
 export const resetPasswordSchema = z.object({ email: emailSchema });

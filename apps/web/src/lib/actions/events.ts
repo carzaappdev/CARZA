@@ -29,6 +29,8 @@ function eventError(error: DbError, userId: string, op: string) {
     return fail('VALIDATION', 'Pick a start time in the future.', {
       startsAt: ['Pick a start time in the future.'],
     });
+  if (error.code === 'CZ018')
+    return fail('FORBIDDEN', 'You need to be 18 or older to host an event.');
   if (error.code === '42501') return fail('FORBIDDEN', 'This event can’t be changed.');
   console.error(`${op} failed`, { code: error.code, userId });
   return fail('INTERNAL', 'Couldn’t save the event. Try again.');
@@ -46,6 +48,7 @@ function toRow(e: ReturnType<typeof eventFormSchema.parse>) {
     postal_code: e.postalCode,
     capacity: e.capacity,
     cover_path: e.coverPath,
+    adults_only: e.adultsOnly,
   };
 }
 
@@ -144,6 +147,7 @@ export async function setRsvp(input: unknown): Promise<ActionResult<{ going: boo
     : await supabase.from('event_rsvps').delete().eq('event_id', eventId).eq('user_id', user.id);
   if (error) {
     if (error.code === 'CZ409') return fail('CONFLICT', 'Sorry, this event is full.');
+    if (error.code === 'CZ018') return fail('FORBIDDEN', 'This event is for adults (18+).');
     if (error.code === 'CZ429') return fail('RATE_LIMITED', 'Slow down a little and try again.');
     if (error.code === '22023')
       return fail(

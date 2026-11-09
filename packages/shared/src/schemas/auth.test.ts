@@ -8,20 +8,34 @@ describe('auth schemas', () => {
   });
 
   it('enforces the password policy on sign-up', () => {
-    const bad = signUpSchema.safeParse({ displayName: 'A', email: 'a@b.co', password: 'short1' });
+    const birthDate = '1990-05-17';
+    const bad = signUpSchema.safeParse({
+      displayName: 'A',
+      email: 'a@b.co',
+      password: 'short1',
+      birthDate,
+    });
     expect(bad.success).toBe(false);
     const noDigit = signUpSchema.safeParse({
       displayName: 'A',
       email: 'a@b.co',
       password: 'longenoughpassword',
+      birthDate,
     });
     expect(noDigit.success).toBe(false);
     const ok = signUpSchema.safeParse({
       displayName: ' Ana ',
       email: 'a@b.co',
       password: 'longenough1',
+      birthDate,
     });
     expect(ok.success && ok.data.displayName).toBe('Ana');
+    const noBirthDate = signUpSchema.safeParse({
+      displayName: 'Ana',
+      email: 'a@b.co',
+      password: 'longenough1',
+    });
+    expect(noBirthDate.success).toBe(false);
   });
 
   it('requires matching passwords and reports the field', () => {

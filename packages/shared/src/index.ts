@@ -28,3 +28,4 @@ export * from './logic/rich-text';
 export * from './schemas/message';
 export * from './logic/messages';
 export * from './logic/feed';
+export * from './logic/age';

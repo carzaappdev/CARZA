@@ -49,7 +49,7 @@ export default async function SignUpPage({ searchParams }: { searchParams: AuthS
         <Link href="/guidelines" className="text-foreground underline underline-offset-4">
           Community Guidelines
         </Link>
-        , and confirm you are at least 13. See how we handle your data in our{' '}
+        . See how we handle your data in our{' '}
         <Link href="/privacy" className="text-foreground underline underline-offset-4">
           Privacy Policy
         </Link>
