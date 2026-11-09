@@ -139,11 +139,13 @@ export default async function EventsPage({
       <header className="flex flex-col gap-3 px-4 pt-6 pb-3">
         <div className="flex items-center justify-between gap-3">
           <h1 className="font-display text-3xl font-bold tracking-tight">Events</h1>
-          <Button asChild className="rounded-full">
-            <Link href={hostHref}>
-              <PlusIcon /> Host
-            </Link>
-          </Button>
+          {viewer?.ageGroup === 'teen' ? null : (
+            <Button asChild className="rounded-full">
+              <Link href={hostHref}>
+                <PlusIcon /> Host
+              </Link>
+            </Button>
+          )}
         </div>
         {tab === 'upcoming' ? (
           <div className="flex flex-wrap items-center gap-2">

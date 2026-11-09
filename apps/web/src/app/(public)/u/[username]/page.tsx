@@ -69,12 +69,17 @@ export default async function ProfilePage({ params, searchParams }: Props) {
   const isOwn = viewerId === profile.id;
   const base = `/u/${profile.username}`;
   const supabase = await createClient();
-  const [posts, reels, garage, admin, invites] = await Promise.all([
+  const [posts, reels, garage, admin, invites, canMessage] = await Promise.all([
     tab === 'reels' ? [] : getProfilePosts(supabase, profile.id, tab, viewerId),
     tab === 'reels' ? getProfileReels(supabase, profile.id) : [],
     getGarage(supabase, profile.id),
     viewerId && !isOwn ? isAdmin() : false,
     isOwn ? supabase.rpc('my_invite_count').then((r) => r.data ?? 0) : 0,
+    // Signed out, the button leads to sign-in. Signed in, it only shows when a thread is allowed
+    // (no block, and never between an adult and a teen).
+    viewerId && !isOwn
+      ? supabase.rpc('can_message', { p_user_id: profile.id }).then((r) => r.data === true)
+      : viewerId === null,
   ]);
   return (
     <div className="mx-auto w-full max-w-[640px] flex-1 sm:border-x">
@@ -163,7 +168,7 @@ export default async function ProfilePage({ params, searchParams }: Props) {
         ) : profile.viewerBlocked ? (
           <UnblockButton userId={profile.id} username={profile.username} />
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className={canMessage ? 'grid grid-cols-2 gap-2' : 'grid'}>
             <FollowButton
               userId={profile.id}
               following={profile.viewerFollows}
@@ -171,11 +176,13 @@ export default async function ProfilePage({ params, searchParams }: Props) {
               signedIn={viewerId !== null}
               className="rounded-xl"
             />
-            <MessageButton
-              userId={profile.id}
-              signedIn={viewerId !== null}
-              className="rounded-xl"
-            />
+            {canMessage ? (
+              <MessageButton
+                userId={profile.id}
+                signedIn={viewerId !== null}
+                className="rounded-xl"
+              />
+            ) : null}
           </div>
         )}
       </header>

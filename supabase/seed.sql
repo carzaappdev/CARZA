@@ -74,7 +74,8 @@ select
   '00000000-0000-0000-0000-000000000000', pg_temp.sid(u.label), 'authenticated', 'authenticated', u.email,
   extensions.crypt('password1234', extensions.gen_salt('bf')), now(),
   '{"provider":"email","providers":["email"]}'::jsonb,
-  jsonb_build_object('display_name', u.display_name),
+  -- Seed people are adults, so the age screen and teen rules don't get in the way of demos and tests.
+  jsonb_build_object('display_name', u.display_name, 'birth_date', '1990-01-01'),
   now() - interval '90 days', now(), '', '', '', ''
 from seed_users u;
 

@@ -15,7 +15,7 @@ export async function GET() {
     profile: supabase.from('profiles').select('*').eq('id', uid).single(),
     privateProfile: supabase
       .from('profile_private')
-      .select('postal_code, onboarded_at, updated_at')
+      .select('postal_code, birth_date, terms_accepted_at, onboarded_at, updated_at')
       .eq('user_id', uid)
       .maybeSingle(),
     posts: supabase.from('posts').select('*').eq('author_id', uid).order('created_at'),

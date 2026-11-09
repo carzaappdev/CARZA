@@ -5,7 +5,7 @@ import type { PostAuthor } from './posts';
 
 const EVENT_FIELDS = `
   id, title, description, starts_at, ends_at, timezone, venue_name, address, postal_code, city, region,
-  cover_path, capacity, going_count, cancelled_at, created_at,
+  cover_path, capacity, going_count, cancelled_at, created_at, adults_only,
   host:profiles!events_host_id_fkey ( id, username, display_name, avatar_path, official )
 ` as const;
 
@@ -27,6 +27,7 @@ export type EventSummary = Pick<
   | 'going_count'
   | 'cancelled_at'
   | 'created_at'
+  | 'adults_only'
 > & { host: PostAuthor | null };
 
 /** Upcoming events, soonest first; within `radiusMiles` of a point when one is given. */

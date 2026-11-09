@@ -110,6 +110,9 @@ export default async function EventPage({ params }: Props) {
             {event.title}
           </h1>
         </div>
+        {event.adults_only ? (
+          <p className="bg-muted w-fit rounded-md px-2 py-1 text-xs font-semibold">18+ only</p>
+        ) : null}
 
         <ul className="flex flex-col gap-3 text-[15px]">
           <li className="flex gap-3">

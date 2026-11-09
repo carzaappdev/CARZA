@@ -20,14 +20,29 @@ const createdUsers: string[] = [];
 const uploadedObjects: { bucket: string; path: string }[] = [];
 const createdDealerships: string[] = [];
 
-export async function createUser(label = 'user', email?: string): Promise<TestUser> {
+/** A date of birth that makes someone `age` years old today. */
+export const bornYearsAgo = (age: number) => {
+  const d = new Date();
+  d.setUTCFullYear(d.getUTCFullYear() - age);
+  return d.toISOString().slice(0, 10);
+};
+
+/** Adults by default; pass `birthDate: null` for an account that hasn't given one yet. */
+export async function createUser(
+  label = 'user',
+  email?: string,
+  { birthDate = bornYearsAgo(30) as string | null } = {},
+): Promise<TestUser> {
   const address = email ?? `${label}-${randomUUID().slice(0, 8)}@rls.test`;
   const password = `pw-${randomUUID()}`;
   const { data, error } = await admin.auth.admin.createUser({
     email: address,
     password,
     email_confirm: true,
-    user_metadata: { display_name: `Test ${label}` },
+    user_metadata: {
+      display_name: `Test ${label}`,
+      ...(birthDate ? { birth_date: birthDate } : {}),
+    },
   });
   if (error || !data.user) throw error ?? new Error('createUser failed');
   createdUsers.push(data.user.id);

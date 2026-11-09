@@ -394,6 +394,7 @@ export type Database = {
       events: {
         Row: {
           address: string | null;
+          adults_only: boolean;
           cancelled_at: string | null;
           capacity: number | null;
           city: string | null;
@@ -417,6 +418,7 @@ export type Database = {
         ComputedFields: never;
         Insert: {
           address?: string | null;
+          adults_only?: boolean;
           cancelled_at?: string | null;
           capacity?: number | null;
           city?: string | null;
@@ -439,6 +441,7 @@ export type Database = {
         };
         Update: {
           address?: string | null;
+          adults_only?: boolean;
           cancelled_at?: string | null;
           capacity?: number | null;
           city?: string | null;
@@ -1070,30 +1073,36 @@ export type Database = {
       };
       profile_private: {
         Row: {
+          birth_date: string | null;
           invited_by: string | null;
           location: unknown;
           onboarded_at: string | null;
           postal_code: string | null;
           push_muted: Database['public']['Enums']['notification_type'][];
+          terms_accepted_at: string | null;
           updated_at: string;
           user_id: string;
         };
         ComputedFields: never;
         Insert: {
+          birth_date?: string | null;
           invited_by?: string | null;
           location?: unknown;
           onboarded_at?: string | null;
           postal_code?: string | null;
           push_muted?: Database['public']['Enums']['notification_type'][];
+          terms_accepted_at?: string | null;
           updated_at?: string;
           user_id: string;
         };
         Update: {
+          birth_date?: string | null;
           invited_by?: string | null;
           location?: unknown;
           onboarded_at?: string | null;
           postal_code?: string | null;
           push_muted?: Database['public']['Enums']['notification_type'][];
+          terms_accepted_at?: string | null;
           updated_at?: string;
           user_id?: string;
         };
@@ -1630,6 +1639,7 @@ export type Database = {
         };
         Returns: string;
       };
+      can_message: { Args: { p_user_id: string }; Returns: boolean };
       cancel_test_drive: { Args: { p_note?: string; p_request_id: string }; Returns: undefined };
       complete_onboarding: { Args: Record<PropertyKey, never>; Returns: undefined };
       complete_test_drive: { Args: { p_request_id: string }; Returns: undefined };
@@ -1711,6 +1721,7 @@ export type Database = {
         }[];
       };
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined };
+      my_age_group: { Args: Record<PropertyKey, never>; Returns: string };
       my_invite_count: { Args: Record<PropertyKey, never>; Returns: number };
       parts_for_car: {
         Args: { p_car_id: string; p_limit?: number };
@@ -1787,6 +1798,7 @@ export type Database = {
           year: number;
         }[];
       };
+      set_birth_date: { Args: { p_birth_date: string }; Returns: string };
       set_dealership_verification: {
         Args: {
           p_dealership_id: string;
@@ -1830,6 +1842,7 @@ export type Database = {
         Args: { p_lat?: number; p_limit?: number; p_lng?: number; p_radius_miles?: number };
         Returns: {
           address: string | null;
+          adults_only: boolean;
           cancelled_at: string | null;
           capacity: number | null;
           city: string | null;

@@ -31,6 +31,8 @@ const eventFields = z
     postalCode: z.string().trim().regex(ZIP_CODE, 'Enter a 5-digit ZIP code.'),
     capacity: z.int().min(1, 'At least 1.').max(10000, 'Up to 10,000.').nullable(),
     coverPath: imagePath.nullable(),
+    /** 18+ only: hidden from teens. */
+    adultsOnly: z.boolean().default(false),
   })
   .refine((e) => !e.endsAt || new Date(e.endsAt) > new Date(e.startsAt), {
     message: 'The end must be after the start.',

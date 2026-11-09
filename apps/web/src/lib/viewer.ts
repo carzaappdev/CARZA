@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import type { AgeGroup } from '@carza/shared';
 import { getUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -8,11 +9,14 @@ export const getViewer = cache(async () => {
   const user = await getUser();
   if (!user) return null;
   const supabase = await createClient();
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('display_name, username, avatar_path, role')
-    .eq('id', user.id)
-    .maybeSingle();
+  const [{ data: profile }, { data: age }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('display_name, username, avatar_path, role')
+      .eq('id', user.id)
+      .maybeSingle(),
+    supabase.rpc('my_age_group'),
+  ]);
   // A sign-up trigger creates the profile, so a missing row is a bug. Log it, but keep the header (and so
   // every page) rendering rather than failing the whole site for this user.
   if (!profile) console.error('Profile missing for signed-in user', { userId: user.id });
@@ -22,6 +26,8 @@ export const getViewer = cache(async () => {
     displayName: profile?.display_name ?? 'Your account',
     username: profile?.username ?? null,
     isAdmin: profile?.role === 'admin',
+    /** Null until they've given a date of birth (the app shell sends them to /age first). */
+    ageGroup: age === 'teen' || age === 'adult' ? (age as AgeGroup) : null,
   };
 });
 
