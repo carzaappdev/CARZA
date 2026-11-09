@@ -3,6 +3,7 @@
 import { fail, ok, setBirthDateSchema, type ActionResult } from '@carza/shared';
 import { getUser } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
+import { removeUserFiles } from '@/lib/user-files';
 
 /**
  * Saves the signed-in user's date of birth (once). Under 13, the database deletes the account and this
@@ -25,6 +26,8 @@ export async function setBirthDate(input: unknown): Promise<ActionResult<{ under
     return fail('INTERNAL', 'Couldn’t save that. Try again.');
   }
   if (data === 'under_age') {
+    // The account is gone; so are any photos or videos it had uploaded.
+    await removeUserFiles(user.id);
     await supabase.auth.signOut({ scope: 'local' });
     return ok({ underAge: true });
   }

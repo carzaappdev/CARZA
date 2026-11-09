@@ -3,7 +3,8 @@
 --   * no direct messages between an adult and a teen,
 --   * hosts can mark an event 18+ (hidden from teens), and teens can't host events,
 --   * no push alerts to teens at night.
--- Until someone gives a date of birth they are treated as a teen, the safer side of every rule.
+-- Until someone gives a date of birth they can't post, follow, RSVP, host or message at all, and count
+-- as a teen wherever something is hidden from teens.
 
 -- ---------------------------------------------------------------------------
 -- Date of birth and terms acceptance. Private; never client-writable directly.
@@ -36,8 +37,53 @@ as $$
   );
 $$;
 
-revoke all on function private.age_on(date, date), private.is_minor(uuid) from public, anon, authenticated;
+-- 'teen', 'adult', or null when there's no date of birth on file.
+create function private.age_group(p_user uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select case when private.age_on(pp.birth_date) < 18 then 'teen' else 'adult' end
+  from public.profile_private pp where pp.user_id = p_user and pp.birth_date is not null;
+$$;
+
+-- Whether the caller has passed the age check.
+create function private.has_birth_date()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profile_private pp
+    where pp.user_id = (select auth.uid()) and pp.birth_date is not null
+  );
+$$;
+
+revoke all on function private.age_on(date, date), private.is_minor(uuid), private.age_group(uuid),
+  private.has_birth_date() from public, anon, authenticated;
 grant execute on function private.is_minor(uuid) to anon, authenticated;
+grant execute on function private.has_birth_date() to authenticated;
+
+-- The age check isn't just a screen: without a date of birth on file, nothing can be created. These sit
+-- on top of each table's own insert policy (restrictive = both must pass).
+create policy "Age check first" on public.posts as restrictive for insert to authenticated
+  with check ((select private.has_birth_date()));
+create policy "Age check first" on public.reels as restrictive for insert to authenticated
+  with check ((select private.has_birth_date()));
+create policy "Age check first" on public.follows as restrictive for insert to authenticated
+  with check ((select private.has_birth_date()));
+create policy "Age check first" on public.events as restrictive for insert to authenticated
+  with check ((select private.has_birth_date()));
+create policy "Age check first" on public.event_rsvps as restrictive for insert to authenticated
+  with check ((select private.has_birth_date()));
+create policy "Age check first" on public.messages as restrictive for insert to authenticated
+  with check ((select private.has_birth_date()));
+create policy "Age check first" on public.garage_cars as restrictive for insert to authenticated
+  with check ((select private.has_birth_date()));
 
 -- The caller's own age state, for the app: null until a date of birth is on file.
 create function public.my_age_group()
@@ -73,6 +119,10 @@ begin
   if p_birth_date is null or p_birth_date > current_date or p_birth_date < date '1900-01-01' then
     raise exception 'Enter a real date of birth' using errcode = '22023';
   end if;
+  -- One go only, checked first: an account that already passed can't be deleted (or changed) from here.
+  if not exists (select 1 from public.profile_private pp where pp.user_id = v_uid and pp.birth_date is null) then
+    raise exception 'Your date of birth is already set' using errcode = '42501';
+  end if;
   if private.age_on(p_birth_date) < 13 then
     delete from auth.users where id = v_uid;
     return 'under_age';
@@ -80,9 +130,6 @@ begin
   update public.profile_private
   set birth_date = p_birth_date, terms_accepted_at = coalesce(terms_accepted_at, now())
   where user_id = v_uid and birth_date is null;
-  if not found then
-    raise exception 'Your date of birth is already set' using errcode = '42501';
-  end if;
   return 'ok';
 end;
 $$;
@@ -140,6 +187,10 @@ begin
   insert into public.profiles (id, username, display_name) values (new.id, v_username, v_display_name);
   insert into public.profile_private (user_id, birth_date, terms_accepted_at)
   values (new.id, v_birth, case when v_birth is not null then now() end);
+  -- The date of birth lives in profile_private only: don't leave a copy in the sign-in token.
+  if new.raw_user_meta_data ? 'birth_date' then
+    update auth.users set raw_user_meta_data = raw_user_meta_data - 'birth_date' where id = new.id;
+  end if;
   return new;
 end;
 $$;
@@ -154,11 +205,18 @@ security definer
 set search_path = ''
 as $$
 declare
-  v_low uuid;
-  v_high uuid;
+  v_group text := private.age_group(new.sender_id);
 begin
-  select c.dm_low, c.dm_high into v_low, v_high from public.conversations c where c.id = new.conversation_id;
-  if v_low is not null and private.is_minor(v_low) <> private.is_minor(v_high) then
+  -- Every kind of thread (direct messages and the parked marketplace ones): everyone in it must have
+  -- passed the age check and be in the sender's age group.
+  if (select auth.uid()) is not null and (
+    v_group is null
+    or exists (
+      select 1 from public.conversation_participants cp
+      where cp.conversation_id = new.conversation_id
+        and private.age_group(cp.user_id) is distinct from v_group
+    )
+  ) then
     raise exception 'You can’t message this account' using errcode = '42501';
   end if;
   return new;
@@ -170,7 +228,8 @@ revoke all on function private.messages_age_rules() from public, anon, authentic
 create trigger messages_age_rules before insert on public.messages
   for each row execute function private.messages_age_rules();
 
--- Whether the caller may message someone: not themselves, no block either way, same age group.
+-- Whether the caller may message someone: not themselves, no block either way, both past the age
+-- check and in the same age group.
 -- Drives the Message button, so people aren't offered a thread they can't use.
 create function public.can_message(p_user_id uuid)
 returns boolean
@@ -179,10 +238,13 @@ stable
 security definer
 set search_path = ''
 as $$
-  select (select auth.uid()) is not null
+  select coalesce(
+    (select auth.uid()) is not null
     and p_user_id <> (select auth.uid())
     and not private.is_blocked_pair((select auth.uid()), p_user_id)
-    and private.is_minor((select auth.uid())) = private.is_minor(p_user_id);
+    and private.age_group((select auth.uid())) = private.age_group(p_user_id),
+    false
+  );
 $$;
 
 revoke all on function public.can_message(uuid) from public, anon;
@@ -210,7 +272,9 @@ begin
     raise exception 'That account no longer exists.' using errcode = 'P0002';
   end if;
   -- Same answer for a block and for the adult/teen rule, so neither can be told apart.
-  if private.is_blocked_pair(v_uid, p_user_id) or private.is_minor(v_uid) <> private.is_minor(p_user_id) then
+  if private.is_blocked_pair(v_uid, p_user_id)
+     or private.age_group(v_uid) is distinct from private.age_group(p_user_id)
+     or private.age_group(v_uid) is null then
     raise exception 'You can’t message this account.' using errcode = '42501';
   end if;
 
@@ -242,7 +306,8 @@ end;
 $$;
 
 -- ---------------------------------------------------------------------------
--- Events: 18+ events are hidden from signed-in teens, and teens can't host.
+-- Events: 18+ events are only shown to signed-in adults (not teens, not signed-out visitors), and
+-- teens can't host.
 -- ---------------------------------------------------------------------------
 alter table public.events add column adults_only boolean not null default false;
 
@@ -250,15 +315,14 @@ grant insert (adults_only) on public.events to authenticated;
 grant update (adults_only) on public.events to authenticated;
 
 drop policy "Events are public, minus blocked hosts" on public.events;
-create policy "Events are public, minus blocked hosts and 18+ events for teens" on public.events
+create policy "Events are public, minus blocked hosts; 18+ events are for signed-in adults" on public.events
   for select to anon, authenticated
   using (
     host_id <> all (coalesce((select private.blocked_ids()), '{}'))
     and (
       not adults_only
-      or (select auth.uid()) is null
       or host_id = (select auth.uid())
-      or not (select private.is_minor((select auth.uid())))
+      or ((select auth.uid()) is not null and not (select private.is_minor((select auth.uid()))))
     )
   );
 
@@ -293,8 +357,44 @@ begin
 end;
 $$;
 
-revoke all on function private.events_age_rules(), private.event_rsvps_age_rules()
-  from public, anon, authenticated;
+-- Turning an event 18+ later takes teens off the guest list (their cars go with the RSVP).
+create function private.events_adults_only_changed()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  delete from public.event_rsvps r where r.event_id = new.id and private.is_minor(r.user_id);
+  return null;
+end;
+$$;
+
+-- No posting on an 18+ event's wall as a teen.
+create function private.posts_age_rules()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is not null
+     and private.is_minor(new.author_id)
+     and exists (select 1 from public.events e where e.id = new.event_id and e.adults_only) then
+    raise exception 'This event is for adults' using errcode = 'CZ018';
+  end if;
+  return new;
+end;
+$$;
+
+revoke all on function private.events_age_rules(), private.event_rsvps_age_rules(),
+  private.events_adults_only_changed(), private.posts_age_rules() from public, anon, authenticated;
+
+create trigger events_adults_only_changed after update of adults_only on public.events
+  for each row when (new.adults_only and not old.adults_only)
+  execute function private.events_adults_only_changed();
+create trigger posts_age_rules before insert on public.posts
+  for each row when (new.event_id is not null) execute function private.posts_age_rules();
 
 create trigger events_age_rules before insert on public.events
   for each row execute function private.events_age_rules();
