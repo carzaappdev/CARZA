@@ -11,8 +11,10 @@ Mahdy is the lead developer. Treat this file as law. If a request conflicts with
 - **Garage** — My Garage: your cars, their builds, and parts matched to each one (`/account/garage`).
 - Auth (email/password, Apple, Google) and profiles carry over.
 
+Direct messages between members (`/messages`) are live too (enabled 2026-11-04).
+
 **Parked (built, but switched off for launch):** marketplace (listings, search, selling), dealer pages and
-dealer dashboard, messaging, test drives. The code stays; `HIDDEN_FOR_LAUNCH` in
+dealer dashboard, marketplace messaging (buyer/dealer threads), test drives. The code stays; `HIDDEN_FOR_LAUNCH` in
 `apps/web/src/lib/route-guard.ts` makes those routes 404. Don't extend parked features unless asked.
 
 Do NOT build other features or "prepare" for them with speculative code. Keep schemas extensible, nothing more.
