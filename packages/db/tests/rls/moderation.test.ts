@@ -106,6 +106,28 @@ describe('suspending an account', () => {
     expect((await mod.client.from('profiles').select('id').eq('id', author.id)).data).toHaveLength(
       1,
     );
+    // Takes effect at once, even with a sign-in token that hasn't run out: nothing can be created,
+    // changed or deleted, and the account can't delete itself to destroy what's being kept.
+    expect(
+      (await author.client.from('posts').insert({ body: 'still talking' })).error,
+    ).not.toBeNull();
+    await author.client.from('posts').delete().eq('id', id);
+    expect((await admin.from('posts').select('id').eq('id', id)).data).toHaveLength(1);
+    expect((await author.client.rpc('delete_my_account')).error?.code).toBe('42501');
+    expect((await admin.from('profiles').select('id').eq('id', author.id)).data).toHaveLength(1);
+    expect(
+      (
+        await author.client.rpc('admin_set_suspended', {
+          p_user_id: author.id,
+          p_action: 'unsuspend',
+        })
+      ).error,
+    ).not.toBeNull();
+    const file = new Blob(['x'], { type: 'image/png' });
+    expect(
+      (await author.client.storage.from('avatars').upload(`${author.id}/x.png`, file)).error,
+    ).not.toBeNull();
+
     // Their sessions are gone, so the app can't keep them signed in.
     expect((await author.client.auth.refreshSession()).error).not.toBeNull();
 

@@ -13,23 +13,28 @@ const CONFIRM: Record<ReportDecision, string | null> = {
   suspend:
     'Suspend this account? They’ll be signed out and everything they posted will be hidden until you lift it.',
   escalate:
-    'Escalate for child safety? The account is suspended and the files are moved out of public view and kept as evidence. Nothing is deleted. You must then report it to NCMEC.',
+    'Escalate for child safety? The account is suspended and everything it uploaded is moved out of public view and kept as evidence. Nothing is deleted. You must then report it to NCMEC.',
+  delete_account:
+    'Delete this account and everything in it for good? Use this for a child under 13. It can’t be undone.',
 };
 const DONE: Record<ReportDecision, string> = {
   dismiss: 'Dismissed',
   remove: 'Removed',
   suspend: 'Account suspended',
   escalate: 'Escalated. Now file the NCMEC report.',
+  delete_account: 'Account deleted',
 };
 
 export function ReportActions({
   reportId,
   canRemove,
   canEscalate,
+  canDeleteAccount,
 }: {
   reportId: string;
   canRemove: boolean;
   canEscalate: boolean;
+  canDeleteAccount: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -39,7 +44,7 @@ export function ReportActions({
       if (question && !window.confirm(question)) return;
       const result = await resolveReport({ reportId, decision });
       if (!result.ok) toast.error(result.error.message, { duration: 15000 });
-      else toast.success(DONE[decision]);
+      else toast.success(result.data.info ?? DONE[decision], { duration: 10000 });
       router.refresh();
     });
   const button = (
@@ -63,6 +68,7 @@ export function ReportActions({
       {button('suspend', 'Suspend account')}
       {canRemove ? button('remove', 'Remove', 'destructive') : null}
       {canEscalate ? button('escalate', 'Escalate', 'destructive') : null}
+      {canDeleteAccount ? button('delete_account', 'Delete account', 'destructive') : null}
     </div>
   );
 }
