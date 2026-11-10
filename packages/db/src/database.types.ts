@@ -628,6 +628,7 @@ export type Database = {
           name: string;
           resolved_at: string | null;
           resolved_by: string | null;
+          sender_hash: string;
           signature: string;
           statement: string;
           status: string;
@@ -646,6 +647,7 @@ export type Database = {
           name: string;
           resolved_at?: string | null;
           resolved_by?: string | null;
+          sender_hash: string;
           signature: string;
           statement: string;
           status?: string;
@@ -663,6 +665,7 @@ export type Database = {
           name?: string;
           resolved_at?: string | null;
           resolved_by?: string | null;
+          sender_hash?: string;
           signature?: string;
           statement?: string;
           status?: string;
@@ -1955,9 +1958,11 @@ export type Database = {
           p_email: string;
           p_kind: string;
           p_name: string;
+          p_sender_hash: string;
           p_signature: string;
           p_statement: string;
           p_urls: string;
+          p_user_id?: string;
         };
         Returns: string;
       };

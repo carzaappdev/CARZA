@@ -150,7 +150,10 @@ export default async function ReportsPage() {
                 ) : null}
                 <p className="text-sm">
                   From <span className="font-semibold">{q.name}</span> ·{' '}
-                  <a href={`mailto:${q.email}`} className="underline underline-offset-4">
+                  <a
+                    href={`mailto:${encodeURIComponent(q.email)}`}
+                    className="underline underline-offset-4"
+                  >
                     {q.email}
                   </a>
                 </p>

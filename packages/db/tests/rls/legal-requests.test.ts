@@ -1,9 +1,13 @@
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { admin, anon, cleanup, createUser, type TestUser } from './helpers';
 
 let mod: TestUser;
 let user: TestUser;
 const created: string[] = [];
+const hash = (seed: string) => createHash('sha256').update(seed).digest('hex');
+// A fresh "sender" per run so the hourly limit doesn't carry over between runs.
+const SENDER = hash(`sender-${Date.now()}`);
 
 const request = (extra: Record<string, string> = {}) => ({
   p_kind: 'intimate_image',
@@ -12,6 +16,7 @@ const request = (extra: Record<string, string> = {}) => ({
   p_urls: 'https://carza.example/p/123',
   p_statement: 'That is me and I never agreed to this being posted.',
   p_signature: 'Jamie Rivera',
+  p_sender_hash: SENDER,
   ...extra,
 });
 
@@ -26,10 +31,19 @@ afterAll(async () => {
 });
 
 describe('legal requests', () => {
-  it('can be sent without an account and get a ticket and a 48-hour deadline', async () => {
-    const { data: ticket, error } = await anon().rpc('submit_legal_request', request());
+  it('come in through the server only: no user or signed-out caller can file one directly', async () => {
+    for (const client of [anon(), user.client, mod.client]) {
+      expect((await client.rpc('submit_legal_request', request())).error).not.toBeNull();
+    }
+  });
+
+  it('get a ticket and, for intimate images, a 48-hour deadline', async () => {
+    const { data: ticket, error } = await admin.rpc(
+      'submit_legal_request',
+      request({ p_email: 'Jamie@Example.com' }),
+    );
     expect(error).toBeNull();
-    expect(ticket).toMatch(/^CZ-[0-9A-F]{8}$/);
+    expect(ticket).toMatch(/^CZ-[0-9A-F]{12}$/);
     created.push(ticket!);
     const { data } = await admin
       .from('legal_requests')
@@ -38,17 +52,17 @@ describe('legal requests', () => {
       .single();
     expect(data?.status).toBe('open');
     expect(data?.user_id).toBeNull();
-    expect(data?.email).toBe(data?.email.toLowerCase());
+    expect(data?.email).toBe('jamie@example.com');
     const hours =
       (new Date(data!.due_at!).getTime() - new Date(data!.created_at).getTime()) / 3_600_000;
     expect(Math.round(hours)).toBe(48);
   });
 
   it('other kinds have no deadline, and a signed-in sender is recorded', async () => {
-    const { data: ticket } = await user.client.rpc(
-      'submit_legal_request',
-      request({ p_kind: 'copyright' }),
-    );
+    const { data: ticket } = await admin.rpc('submit_legal_request', {
+      ...request({ p_kind: 'copyright' }),
+      p_user_id: user.id,
+    });
     created.push(ticket!);
     const { data } = await admin
       .from('legal_requests')
@@ -58,15 +72,19 @@ describe('legal requests', () => {
     expect(data).toEqual({ due_at: null, user_id: user.id });
   });
 
-  it('refuses bad input and direct inserts', async () => {
+  it('refuses bad input, tricky characters and direct inserts', async () => {
     const badInputs: Record<string, string>[] = [
       { p_kind: 'nonsense' },
       { p_email: 'not-an-email' },
+      // Would add a hidden recipient to the admin's reply.
+      { p_email: 'a@b.co?bcc=x@evil.example' },
       { p_statement: 'short' },
       { p_signature: '' },
+      { p_name: 'Jamie\nRivera' },
+      { p_sender_hash: 'not-a-hash' },
     ];
     for (const bad of badInputs) {
-      expect((await anon().rpc('submit_legal_request', request(bad))).error).not.toBeNull();
+      expect((await admin.rpc('submit_legal_request', request(bad))).error).not.toBeNull();
     }
     for (const client of [anon(), user.client, mod.client]) {
       const { error } = await client.from('legal_requests').insert({
@@ -76,13 +94,14 @@ describe('legal requests', () => {
         urls: 'https://x.example',
         statement: 'a statement long enough',
         signature: 'Someone',
+        sender_hash: SENDER,
       });
       expect(error).not.toBeNull();
     }
   });
 
-  it('are readable and resolvable by admins only', async () => {
-    const { data: ticket } = await anon().rpc('submit_legal_request', request());
+  it('are readable and resolvable by admins only, and never show the sender hash', async () => {
+    const { data: ticket } = await admin.rpc('submit_legal_request', request());
     created.push(ticket!);
     for (const client of [anon(), user.client]) {
       expect((await client.from('legal_requests').select('id')).data ?? []).toEqual([]);
@@ -97,6 +116,7 @@ describe('legal requests', () => {
 
     const seen = await mod.client.from('legal_requests').select('ticket').eq('ticket', ticket!);
     expect(seen.data).toHaveLength(1);
+    expect((await mod.client.from('legal_requests').select('sender_hash')).error).not.toBeNull();
     expect(
       (await mod.client.from('legal_requests').update({ status: 'actioned' }).eq('ticket', ticket!))
         .error,
@@ -111,14 +131,24 @@ describe('legal requests', () => {
     expect(after.data?.resolved_at).toBeTruthy();
   });
 
-  it('limits how many one email address can send in a day', async () => {
-    const email = `flood-${Date.now()}@example.com`;
-    let refused = 0;
-    for (let i = 0; i < 6; i++) {
-      const { data, error } = await anon().rpc('submit_legal_request', request({ p_email: email }));
-      if (error?.code === 'CZ429') refused += 1;
-      else if (data) created.push(data);
-    }
-    expect(refused).toBe(1);
+  it('limits one sender, even in parallel, without affecting anyone else or any email address', async () => {
+    const flooder = hash(`flooder-${Date.now()}`);
+    const email = `victim-${Date.now()}@example.com`;
+    const results = await Promise.all(
+      Array.from({ length: 14 }, () =>
+        admin.rpc('submit_legal_request', request({ p_sender_hash: flooder, p_email: email })),
+      ),
+    );
+    for (const r of results) if (r.data) created.push(r.data);
+    expect(results.filter((r) => r.data).length).toBe(10);
+    expect(results.filter((r) => r.error?.code === 'CZ429').length).toBe(4);
+
+    // Someone else can still file, including under the same email address the flooder used.
+    const other = await admin.rpc(
+      'submit_legal_request',
+      request({ p_sender_hash: hash(`other-${Date.now()}`), p_email: email }),
+    );
+    expect(other.error).toBeNull();
+    created.push(other.data!);
   });
 });
