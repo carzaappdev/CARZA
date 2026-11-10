@@ -15,7 +15,7 @@ export function LegalPage({
   children: ReactNode;
 }) {
   return (
-    <article className="mx-auto flex w-full max-w-[720px] flex-col gap-8 px-4 py-8 md:py-12">
+    <article className="mx-auto flex w-full max-w-[720px] flex-col gap-8 px-4 pt-8 pb-32 md:pt-12">
       <nav aria-label="Policies" className="flex flex-wrap gap-2">
         {LEGAL_LINKS.map((l) => (
           <Link

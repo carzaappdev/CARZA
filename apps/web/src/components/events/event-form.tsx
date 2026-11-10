@@ -57,6 +57,7 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
     startsAt: initial.timezone ? isoToZonedInput(initial.startsAt, initial.timezone) : '',
     endsAt: initial.timezone ? isoToZonedInput(initial.endsAt, initial.timezone) : '',
   });
+  const [hostConfirmed, setHostConfirmed] = useState(false);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[]>>({});
@@ -99,7 +100,9 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
       adultsOnly: v.adultsOnly,
     };
     startTransition(async () => {
-      const result = eventId ? await updateEvent({ eventId, event }) : await createEvent(event);
+      const result = eventId
+        ? await updateEvent({ eventId, event })
+        : await createEvent({ ...event, hostConfirmed });
       if (!result.ok) {
         setErrors(result.error.fieldErrors ?? {});
         toast.error(result.error.message);
@@ -323,6 +326,25 @@ export function EventForm({ eventId, initial }: { eventId?: string; initial: Eve
           </span>
         </span>
       </label>
+
+      {eventId ? null : (
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            className="mt-0.5 size-5 accent-current"
+            checked={hostConfirmed}
+            aria-invalid={errors.hostConfirmed ? true : undefined}
+            onChange={(e) => setHostConfirmed(e.target.checked)}
+          />
+          <span className="text-sm">
+            I have permission to gather at this location, and this isn’t a street race, takeover or
+            anything else that breaks traffic laws. I’m responsible for this event.
+            {errors.hostConfirmed ? (
+              <span className="text-destructive block">{errors.hostConfirmed[0]}</span>
+            ) : null}
+          </span>
+        </label>
+      )}
 
       <Button
         type="submit"

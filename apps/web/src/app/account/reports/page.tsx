@@ -2,6 +2,7 @@ import type { Metadata, Route } from 'next';
 import Link from 'next/link';
 import { ShieldCheckIcon } from 'lucide-react';
 import {
+  LEGAL_REQUEST_LABELS,
   SOCIAL_REPORT_REASONS,
   SOCIAL_REPORT_TARGETS,
   URGENT_REPORT_REASONS,
@@ -9,7 +10,11 @@ import {
 } from '@carza/shared';
 import { EmptyState } from '@/components/feedback/empty-state';
 import { PageHeader } from '@/components/layout/page-header';
-import { ReportActions, UnsuspendButton } from '@/components/safety/report-actions';
+import {
+  LegalRequestActions,
+  ReportActions,
+  UnsuspendButton,
+} from '@/components/safety/report-actions';
 import { requireAdmin } from '@/lib/auth';
 import { createClient } from '@/lib/supabase/server';
 
@@ -104,6 +109,14 @@ export default async function ReportsPage() {
       .order('suspended_at', { ascending: false })
       .limit(100),
   ]);
+  // Requests from the public forms (no account needed). Intimate-image ones carry a 48-hour deadline.
+  const { data: requests } = await supabase
+    .from('legal_requests')
+    .select('id, ticket, kind, name, email, urls, statement, due_at, created_at')
+    .eq('status', 'open')
+    .order('due_at', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: true })
+    .limit(200);
   const strikes = new Map<string, number>();
   for (const a of actions ?? []) {
     if (a.target_user_id) strikes.set(a.target_user_id, (strikes.get(a.target_user_id) ?? 0) + 1);
@@ -115,6 +128,42 @@ export default async function ReportsPage() {
         title="Reports"
         description={`${queue.length} open, urgent first, then oldest. Remove takes it down for everyone; Suspend hides everything from that account.`}
       />
+      {requests?.length ? (
+        <section aria-labelledby="requests-heading" className="flex flex-col gap-3">
+          <h2 id="requests-heading" className="font-display text-lg font-bold">
+            Legal requests
+          </h2>
+          <ul className="flex flex-col gap-3">
+            {requests.map((q) => (
+              <li
+                key={q.id}
+                className={`flex flex-col gap-2 rounded-2xl border p-4 ${q.due_at ? 'border-destructive' : ''}`}
+              >
+                <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
+                  {LEGAL_REQUEST_LABELS[q.kind as keyof typeof LEGAL_REQUEST_LABELS] ?? q.kind} ·{' '}
+                  {q.ticket} · {new Date(q.created_at).toLocaleDateString('en-US')}
+                </p>
+                {q.due_at ? (
+                  <p className="text-destructive text-sm font-semibold">
+                    Urgent · {deadline(q.created_at)}
+                  </p>
+                ) : null}
+                <p className="text-sm">
+                  From <span className="font-semibold">{q.name}</span> ·{' '}
+                  <a href={`mailto:${q.email}`} className="underline underline-offset-4">
+                    {q.email}
+                  </a>
+                </p>
+                <p className="text-[15px] break-words whitespace-pre-wrap">{q.urls}</p>
+                <p className="text-muted-foreground text-sm break-words whitespace-pre-wrap">
+                  {q.statement}
+                </p>
+                <LegalRequestActions requestId={q.id} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {queue.length ? (
         <ul className="flex flex-col gap-3">
           {queue.map(({ report: r, count, reasons, urgentSince }) => {

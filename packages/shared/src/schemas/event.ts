@@ -51,6 +51,14 @@ export const eventFormSchema = eventFields.refine(
 );
 export type EventFormInput = z.input<typeof eventFormSchema>;
 
+/**
+ * What a host confirms when publishing a new event: they may use the place, and it isn't a street race,
+ * takeover or anything else that breaks traffic law. Sent alongside the event fields.
+ */
+export const hostConfirmSchema = z.object({
+  hostConfirmed: z.literal(true, 'Confirm this before you publish.'),
+});
+
 export const eventIdSchema = z.object({ eventId: z.guid() });
 export const setRsvpSchema = z.object({ eventId: z.guid(), going: z.boolean() });
 /** Cars from your garage you're bringing to an event you're going to. */

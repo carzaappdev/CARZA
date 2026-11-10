@@ -5,6 +5,7 @@ import { useTransition } from 'react';
 import { toast } from 'sonner';
 import type { ReportDecision } from '@carza/shared';
 import { Button } from '@/components/ui/button';
+import { resolveLegalRequest } from '@/lib/actions/legal';
 import { resolveReport, setSuspended } from '@/lib/actions/moderation';
 
 const CONFIRM: Record<ReportDecision, string | null> = {
@@ -94,5 +95,39 @@ export function UnsuspendButton({ userId }: { userId: string }) {
     >
       Lift suspension
     </Button>
+  );
+}
+
+/** Close a request from the public legal forms once it's been handled (or turned down). */
+export function LegalRequestActions({ requestId }: { requestId: string }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const run = (status: 'actioned' | 'rejected') =>
+    startTransition(async () => {
+      const question =
+        status === 'actioned'
+          ? 'Mark as done? Only do this once the content is removed or the request is answered.'
+          : 'Reject this request as invalid?';
+      if (!window.confirm(question)) return;
+      const result = await resolveLegalRequest({ requestId, status });
+      if (!result.ok) toast.error(result.error.message);
+      else toast.success(status === 'actioned' ? 'Marked done' : 'Rejected');
+      router.refresh();
+    });
+  return (
+    <div className="ml-auto flex gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className="rounded-full"
+        disabled={pending}
+        onClick={() => run('rejected')}
+      >
+        Reject
+      </Button>
+      <Button size="sm" className="rounded-full" disabled={pending} onClick={() => run('actioned')}>
+        Mark done
+      </Button>
+    </div>
   );
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import {
   eventFormSchema,
   eventIdSchema,
+  hostConfirmSchema,
   fail,
   ok,
   setRsvpCarsSchema,
@@ -72,6 +73,8 @@ async function coverIsTheirs(path: string | null, userId: string) {
 export async function createEvent(input: unknown): Promise<ActionResult<{ id: string }>> {
   const parsed = eventFormSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
+  const confirmed = hostConfirmSchema.safeParse(input);
+  if (!confirmed.success) return invalid(confirmed.error);
   const user = await getUser();
   if (!user) return fail('UNAUTHENTICATED', 'Sign in to host an event.');
   if (!(await coverIsTheirs(parsed.data.coverPath, user.id))) {
