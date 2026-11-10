@@ -17,8 +17,17 @@ export default function TermsPage() {
       <LegalSection title="1. Who can use Carza">
         <p>
           You must be at least 13 years old to use Carza, and old enough to agree to these terms
-          where you live. If you are under 18, a parent or guardian should review these terms with
-          you. Some events may be limited to adults by their hosts.
+          where you live. We ask for your date of birth when you join, and you must give your real
+          one. If you are under 18, a parent or guardian should review these terms with you.
+        </p>
+        <p>
+          Carza works differently for members aged 13 to 17: they can’t exchange direct messages
+          with adults, can’t host events, don’t see events marked 18+, and don’t get alerts at
+          night. Getting around these rules, or giving a false age, is a reason to close an account.
+        </p>
+        <p>
+          Carza is offered in the United States only. If you use it from somewhere else, you are
+          responsible for following your local law.
         </p>
         <p>
           You can only have one personal account, and you must not use Carza if we have removed you
@@ -87,9 +96,15 @@ export default function TermsPage() {
 
       <LegalSection title="7. Copyright">
         <p>
-          If you believe content on Carza infringes your copyright, report it in the app with the
-          details of your work and where it appears on Carza. We remove infringing content and close
-          the accounts of repeat infringers.
+          If you believe content on Carza infringes your copyright, send a notice to our copyright
+          agent as described on our <Link href="/copyright">Copyright</Link> page. We remove
+          infringing content, tell the person who posted it, accept counter-notices, and suspend or
+          close the accounts of repeat infringers.
+        </p>
+        <p>
+          If an intimate image of you was shared without your consent, use{' '}
+          <Link href="/takedown">Remove an intimate image</Link>. We remove it within 48 hours of a
+          valid request. You don’t need an account.
         </p>
       </LegalSection>
 
@@ -129,6 +144,12 @@ export default function TermsPage() {
         <p>
           These terms are governed by the laws of the United States and the state where Carza is
           organized, without regard to conflict-of-law rules.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="13. Contact">
+        <p>
+          Questions about these terms, or a legal request: see <Link href="/contact">Contact</Link>.
         </p>
       </LegalSection>
     </LegalPage>

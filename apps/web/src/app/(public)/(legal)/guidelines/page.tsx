@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { LegalPage, LegalSection } from '@/components/legal/legal-page';
 
 export const metadata: Metadata = {
@@ -34,6 +35,22 @@ export default function GuidelinesPage() {
         </ul>
       </LegalSection>
 
+      <LegalSection title="Protect young people">
+        <ul>
+          <li>You must be 13 or older to use Carza, and give your real date of birth.</li>
+          <li>
+            Zero tolerance for anything that sexualizes, exploits or endangers a child. We remove
+            it, close the account, and report it to the National Center for Missing &amp; Exploited
+            Children.
+          </li>
+          <li>
+            Adults must not try to contact members under 18 privately or get around the limits Carza
+            places on teen accounts.
+          </li>
+          <li>Mark an event 18+ if it isn’t suitable for teens.</li>
+        </ul>
+      </LegalSection>
+
       <LegalSection title="Host great events">
         <ul>
           <li>Only host at places where you have permission to gather.</li>
@@ -60,9 +77,19 @@ export default function GuidelinesPage() {
 
       <LegalSection title="See something? Report it">
         <p>
-          Use Report on any post, reel, event or profile. Reports are private, and our team reviews
-          them. You can also block anyone so neither of you sees the other. If someone is in danger,
-          call 911 first.
+          Use Report on any post, reel, event, message or profile. Reports are private, and our team
+          reviews them. You can also block anyone so neither of you sees the other. If someone is in
+          danger, call 911 first.
+        </p>
+        <p>
+          Not on Carza, or need something removed fast? An intimate image of you shared without
+          consent: <Link href="/takedown">Remove an intimate image</Link> (we act within 48 hours).
+          Your copyrighted work: <Link href="/copyright">Copyright</Link>. Anything else:{' '}
+          <Link href="/contact">Contact</Link>.
+        </p>
+        <p>
+          Breaking these guidelines can mean content removed, an account suspended, or an account
+          closed for good. Repeat or serious cases are closed.
         </p>
       </LegalSection>
     </LegalPage>

@@ -10,6 +10,12 @@ export const clientSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z.string().min(20),
   NEXT_PUBLIC_SITE_URL: z.url(),
+  // Shown on the legal pages. Optional so the app still builds without them, but set all three before
+  // launch: the address people write to, the company's legal name, and its postal address (the
+  // copyright agent's details must match what's registered with the US Copyright Office).
+  NEXT_PUBLIC_CONTACT_EMAIL: z.email().optional(),
+  NEXT_PUBLIC_LEGAL_NAME: z.string().min(2).max(120).optional(),
+  NEXT_PUBLIC_LEGAL_ADDRESS: z.string().min(5).max(300).optional(),
 });
 
 export const serverSchema = z.object({
