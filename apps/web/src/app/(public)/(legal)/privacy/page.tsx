@@ -1,18 +1,20 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { CONTACT_EMAIL } from '@/components/legal/legal';
 import { LegalPage, LegalSection } from '@/components/legal/legal-page';
 
 function Contact() {
-  return CONTACT_EMAIL ? (
+  return (
     <>
-      email{' '}
-      <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold underline underline-offset-4">
-        {CONTACT_EMAIL}
-      </a>{' '}
-      and we will answer within 30 days.
+      use our <Link href="/contact">contact form</Link>
+      {CONTACT_EMAIL ? (
+        <>
+          {' '}
+          or email <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+        </>
+      ) : null}
+      , and we will answer within 30 days.
     </>
-  ) : (
-    <>use Report in the app and choose “Other”, and we will answer within 30 days.</>
   );
 }
 
@@ -35,6 +37,10 @@ export default function PrivacyPage() {
             hash), or the name and email Google or Apple share with us if you sign in with them.
           </li>
           <li>
+            <strong>Date of birth:</strong> to confirm you are old enough and to apply the right
+            rules for under-18s. It is private and never shown on your profile.
+          </li>
+          <li>
             <strong>Profile:</strong> display name, username, bio, photo, and the cars in your
             garage.
           </li>
@@ -43,11 +49,23 @@ export default function PrivacyPage() {
             RSVPs.
           </li>
           <li>
+            <strong>Direct messages</strong> you send and receive. Only the people in a conversation
+            can read them; our team sees a message only if someone in the conversation reports it.
+          </li>
+          <li>
+            <strong>Alert settings:</strong> if you turn on push alerts, the address your browser
+            gives us to deliver them, and which kinds you have muted.
+          </li>
+          <li>
             <strong>Location you choose:</strong> a home ZIP code and event addresses. We do not
             track your device’s location.
           </li>
           <li>
             <strong>Reports and blocks</strong> you make, including a copy of the reported content.
+          </li>
+          <li>
+            <strong>Requests you send us</strong> through our forms (for example to remove an image
+            or a copyright notice): your name, email and what you wrote.
           </li>
         </ul>
       </LegalSection>
@@ -104,7 +122,10 @@ export default function PrivacyPage() {
         <p>
           We keep your information while your account is open. Content you delete is removed from
           Carza right away and from backups over time. Read notifications are deleted after 90 days.
-          Reports may be kept longer to deal with repeat abuse.
+          Reports, removal requests and records of action we took on an account may be kept longer
+          to deal with repeat abuse. Where the law requires it, for example material we must report
+          to the National Center for Missing &amp; Exploited Children, we keep the content securely
+          for the period the law sets (currently one year), away from public view.
         </p>
       </LegalSection>
 
@@ -124,12 +145,32 @@ export default function PrivacyPage() {
           Depending on where you live (for example California), you may have more rights under local
           law. We will not treat you differently for using them.
         </p>
+        <p>
+          We do not sell your personal information, and we do not share it for advertising. We do
+          not track you across other websites, and we do not let other companies collect information
+          about your activity on Carza over time. Because of that, Carza behaves the same whether or
+          not your browser sends a “Do Not Track” or Global Privacy Control signal.
+        </p>
       </LegalSection>
 
       <LegalSection title="Children">
         <p>
-          Carza is not for children under 13, and we do not knowingly collect their information. If
-          you think a child under 13 has an account, report the profile and we will remove it.
+          Carza is not for children under 13, and we do not knowingly collect their information. We
+          ask for a date of birth when an account is created. If it shows the person is under 13, we
+          don’t create the account, or we delete it and everything in it. If you think a child under
+          13 has an account, report the profile or <Contact />
+        </p>
+        <p>
+          Members aged 13 to 17 can’t exchange direct messages with adults, can’t host events, don’t
+          see events marked 18+, and don’t get push alerts at night. Parents and guardians with
+          questions about a teen’s account can reach us the same way.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Where your information is">
+        <p>
+          Carza is run from the United States and offered to people in the United States. Your
+          information is stored and processed there.
         </p>
       </LegalSection>
 

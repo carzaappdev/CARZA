@@ -617,6 +617,79 @@ export type Database = {
           },
         ];
       };
+      legal_requests: {
+        Row: {
+          admin_note: string | null;
+          created_at: string;
+          due_at: string | null;
+          email: string;
+          id: string;
+          kind: string;
+          name: string;
+          resolved_at: string | null;
+          resolved_by: string | null;
+          sender_hash: string;
+          signature: string;
+          statement: string;
+          status: string;
+          ticket: string;
+          urls: string;
+          user_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          admin_note?: string | null;
+          created_at?: string;
+          due_at?: string | null;
+          email: string;
+          id?: string;
+          kind: string;
+          name: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          sender_hash: string;
+          signature: string;
+          statement: string;
+          status?: string;
+          ticket?: string;
+          urls: string;
+          user_id?: string | null;
+        };
+        Update: {
+          admin_note?: string | null;
+          created_at?: string;
+          due_at?: string | null;
+          email?: string;
+          id?: string;
+          kind?: string;
+          name?: string;
+          resolved_at?: string | null;
+          resolved_by?: string | null;
+          sender_hash?: string;
+          signature?: string;
+          statement?: string;
+          status?: string;
+          ticket?: string;
+          urls?: string;
+          user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'legal_requests_resolved_by_fkey';
+            columns: ['resolved_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'legal_requests_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       listing_photos: {
         Row: {
           created_at: string;
@@ -1880,6 +1953,19 @@ export type Database = {
       set_featured: { Args: { p_featured: boolean; p_user_id: string }; Returns: undefined };
       start_conversation: { Args: { p_body: string; p_listing_id: string }; Returns: string };
       start_direct_conversation: { Args: { p_user_id: string }; Returns: string };
+      submit_legal_request: {
+        Args: {
+          p_email: string;
+          p_kind: string;
+          p_name: string;
+          p_sender_hash: string;
+          p_signature: string;
+          p_statement: string;
+          p_urls: string;
+          p_user_id?: string;
+        };
+        Returns: string;
+      };
       suggested_follows: {
         Args: { p_limit?: number };
         Returns: {
