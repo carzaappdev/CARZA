@@ -24,7 +24,9 @@ as $$
     select b.blocker_id from public.blocks b where b.blocked_id = (select auth.uid())
     union
     select p.id from public.profiles p
-    where p.suspended_at is not null and p.id is distinct from (select auth.uid()) and not private.is_admin()
+    where p.suspended_at is not null
+      and p.id is distinct from (select auth.uid())
+      and not (select private.is_admin())
   ) s;
 $$;
 
@@ -32,6 +34,65 @@ drop policy "Profiles are public" on public.profiles;
 create policy "Profiles are public, minus suspended accounts" on public.profiles
   for select to anon, authenticated
   using (suspended_at is null or id = (select auth.uid()) or (select private.is_admin()));
+
+-- A suspension takes effect at once, not when the sign-in token runs out (up to an hour later): while
+-- suspended, an account can't read, create, change or delete anything of its own, can't touch its
+-- files, and can't delete itself (which would destroy what a suspension is meant to keep).
+create function private.is_suspended()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles p where p.id = (select auth.uid()) and p.suspended_at is not null
+  );
+$$;
+
+revoke all on function private.is_suspended() from public, anon;
+grant execute on function private.is_suspended() to authenticated;
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array[
+    'posts', 'post_likes', 'reels', 'reel_likes', 'follows', 'events', 'event_rsvps', 'event_rsvp_cars',
+    'messages', 'garage_cars', 'garage_mods', 'reports', 'blocks'
+  ] loop
+    execute format(
+      'create policy "Not while suspended" on public.%I as restrictive for all to authenticated '
+      'using (not (select private.is_suspended())) with check (not (select private.is_suspended()))',
+      t
+    );
+  end loop;
+end;
+$$;
+
+create policy "Not while suspended" on public.profiles as restrictive for update to authenticated
+  using (not (select private.is_suspended()));
+create policy "Not while suspended" on storage.objects as restrictive for all to authenticated
+  using (not (select private.is_suspended())) with check (not (select private.is_suspended()));
+
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_uid uuid := (select auth.uid());
+begin
+  if v_uid is null then
+    raise exception 'Not signed in' using errcode = '42501';
+  end if;
+  if private.is_suspended() then
+    raise exception 'This account is suspended' using errcode = '42501';
+  end if;
+  delete from auth.users where id = v_uid;
+end;
+$$;
 
 -- ---------------------------------------------------------------------------
 -- moderation_actions: who did what to whose content, and why. Admin-only.

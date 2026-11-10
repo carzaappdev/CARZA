@@ -63,19 +63,31 @@ export default async function ReportsPage() {
     // Marketplace reports wait until the marketplace is switched back on.
     .in('target_type', [...SOCIAL_REPORT_TARGETS])
     .order('created_at', { ascending: true })
-    .limit(300);
+    .limit(2000);
 
-  // One card per reported thing (oldest report first), with how many people reported it.
-  const grouped = new Map<string, { report: NonNullable<typeof reports>[number]; count: number }>();
+  // One card per reported thing (oldest report first), with every reason people gave. A card is
+  // urgent if ANY of its reports is, so a harmless first report can't bury a serious later one.
+  type Row = NonNullable<typeof reports>[number];
+  const grouped = new Map<
+    string,
+    { report: Row; count: number; reasons: Set<string>; urgentSince: string | null }
+  >();
   for (const r of reports ?? []) {
     const key = `${r.target_type}:${r.target_id}`;
-    const seen = grouped.get(key);
-    if (seen) seen.count += 1;
-    else grouped.set(key, { report: r, count: 1 });
+    const seen = grouped.get(key) ?? {
+      report: r,
+      count: 0,
+      reasons: new Set<string>(),
+      urgentSince: null,
+    };
+    seen.count += 1;
+    seen.reasons.add(r.reason);
+    if (isUrgent(r.reason)) seen.urgentSince ??= r.created_at;
+    grouped.set(key, seen);
   }
   // Child safety and intimate-image reports jump the queue: the law gives 48 hours.
   const queue = [...grouped.values()].sort(
-    (a, b) => Number(isUrgent(b.report.reason)) - Number(isUrgent(a.report.reason)),
+    (a, b) => Number(b.urgentSince !== null) - Number(a.urgentSince !== null),
   );
 
   // Earlier removals per person, so repeat offenders stand out.
@@ -105,7 +117,7 @@ export default async function ReportsPage() {
       />
       {queue.length ? (
         <ul className="flex flex-col gap-3">
-          {queue.map(({ report: r, count }) => {
+          {queue.map(({ report: r, count, reasons, urgentSince }) => {
             const snapshot =
               r.target_snapshot &&
               typeof r.target_snapshot === 'object' &&
@@ -113,7 +125,7 @@ export default async function ReportsPage() {
                 ? (r.target_snapshot as Record<string, unknown>)
                 : {};
             const { href, preview } = describe(r.target_type, r.target_id, snapshot);
-            const urgent = isUrgent(r.reason);
+            const urgent = urgentSince !== null;
             const ownerKey = OWNER_KEY[r.target_type];
             const owner = r.target_type === 'user' ? r.target_id : ownerKey && snapshot[ownerKey];
             const prior = typeof owner === 'string' ? (strikes.get(owner) ?? 0) : 0;
@@ -123,14 +135,14 @@ export default async function ReportsPage() {
                 className={`flex flex-col gap-2 rounded-2xl border p-4 ${urgent ? 'border-destructive' : ''}`}
               >
                 <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                  {r.target_type} · {REASON_LABEL.get(r.reason) ?? r.reason} ·{' '}
+                  {r.target_type} · {[...reasons].map((x) => REASON_LABEL.get(x) ?? x).join(', ')} ·{' '}
                   {new Date(r.created_at).toLocaleDateString('en-US')}
                   {count > 1 ? ` · ${count} reports` : ''}
                   {prior > 0 ? ` · ${prior} earlier ${prior === 1 ? 'removal' : 'removals'}` : ''}
                 </p>
                 {urgent ? (
                   <p className="text-destructive text-sm font-semibold">
-                    Urgent · {deadline(r.created_at)}
+                    Urgent · {deadline(urgentSince ?? r.created_at)}
                   </p>
                 ) : null}
                 <p className="line-clamp-4 text-[15px] break-words whitespace-pre-wrap">
@@ -149,7 +161,8 @@ export default async function ReportsPage() {
                   <ReportActions
                     reportId={r.id}
                     canRemove={r.target_type !== 'user'}
-                    canEscalate={r.reason === 'child_safety'}
+                    canEscalate={reasons.has('child_safety')}
+                    canDeleteAccount={r.target_type === 'user'}
                   />
                 </div>
               </li>

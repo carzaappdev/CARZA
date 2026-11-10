@@ -10,8 +10,8 @@ import {
   type ActionResult,
 } from '@carza/shared';
 import { getUser, isAdmin } from '@/lib/auth';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { preserveUserFiles, removeFiles, removeUserFiles } from '@/lib/user-files';
 
 const REMOVABLE = ['post', 'reel', 'event', 'message'] as const;
 type Snapshot = Record<string, unknown>;
@@ -45,32 +45,12 @@ function filesOf(targetType: string, snapshot: Snapshot): { bucket: string; path
 }
 
 /**
- * Moves files out of the public buckets into the private evidence bucket, so nobody can open them by
- * link while they're kept for the legal hold. Needs the secret key: no user, admin or not, can write
- * to that bucket.
- */
-async function preserveFiles(reportId: string, files: { bucket: string; path: string }[]) {
-  const admin = createAdminClient();
-  if (!admin) return files.length === 0;
-  let ok = true;
-  for (const { bucket, path } of files) {
-    const { error } = await admin.storage
-      .from(bucket)
-      .move(path, `${reportId}/${bucket}/${path}`, { destinationBucket: 'evidence' });
-    // Already moved or already gone is fine; anything else needs a person to look.
-    if (error && !/not.?found/i.test(error.message)) {
-      console.error('preserveFiles failed', { reportId, bucket, message: error.message });
-      ok = false;
-    }
-  }
-  return ok;
-}
-
-/**
  * Admins only (the database functions check the role again). See REPORT_DECISIONS for what each
  * decision does. A decision closes every open report on the same thing.
  */
-export async function resolveReport(input: unknown): Promise<ActionResult<null>> {
+export async function resolveReport(
+  input: unknown,
+): Promise<ActionResult<{ info: string | null }>> {
   const parsed = resolveReportSchema.safeParse(input);
   if (!parsed.success) return fail('VALIDATION', 'That request wasn’t valid.');
   const user = await getUser();
@@ -92,6 +72,9 @@ export async function resolveReport(input: unknown): Promise<ActionResult<null>>
       : {}
   ) as Snapshot;
   let warning: string | null = null;
+  let info: string | null = null;
+
+  const owner = ownerOf(report.target_type, report.target_id, snapshot);
 
   if (decision === 'remove') {
     if (!(REMOVABLE as readonly string[]).includes(report.target_type))
@@ -105,13 +88,28 @@ export async function resolveReport(input: unknown): Promise<ActionResult<null>>
       console.error('resolveReport remove failed', { code: error.code, reportId: report.id });
       return fail('INTERNAL', 'Couldn’t remove it. Try again.');
     }
+    // The row is gone; the photos and video must go too, or the old links keep working.
+    if (!(await removeFiles(filesOf(report.target_type, snapshot)))) {
+      warning =
+        'Removed, but its files couldn’t be deleted from storage. Delete them by hand now: the old links still work.';
+    }
   } else if (decision === 'suspend' || decision === 'escalate') {
-    const owner = ownerOf(report.target_type, report.target_id, snapshot);
+    if (decision === 'escalate') {
+      // Any open report on this thing may be the child-safety one, not just the oldest.
+      const { count } = await supabase
+        .from('reports')
+        .select('id', { count: 'exact', head: true })
+        .eq('target_type', report.target_type)
+        .eq('target_id', report.target_id)
+        .eq('reason', 'child_safety')
+        .in('status', ['open', 'reviewing']);
+      if (!count) return fail('VALIDATION', 'Escalate is for child safety reports.');
+    }
     if (!owner) return fail('NOT_FOUND', 'Couldn’t tell whose this is. The account may be gone.');
     const { error } = await supabase.rpc('admin_set_suspended', {
       p_user_id: owner,
       p_action: decision,
-      p_reason: report.reason,
+      p_reason: decision === 'escalate' ? 'child_safety' : report.reason,
       p_note: `Report ${report.id}`,
     });
     if (error) {
@@ -120,13 +118,29 @@ export async function resolveReport(input: unknown): Promise<ActionResult<null>>
       console.error('resolveReport suspend failed', { code: error.code, reportId: report.id });
       return fail('INTERNAL', 'Couldn’t suspend the account. Try again.');
     }
-    if (
-      decision === 'escalate' &&
-      !(await preserveFiles(report.id, filesOf(report.target_type, snapshot)))
-    ) {
-      warning =
-        'The account is suspended, but the files couldn’t be moved out of public storage. Move them by hand now.';
+    if (decision === 'escalate') {
+      // Everything the account uploaded leaves public storage, not just the reported item.
+      const { moved, ok: allMoved } = await preserveUserFiles(owner, report.id);
+      if (!allMoved) {
+        warning = `The account is suspended, but only ${moved} of its files could be moved out of public storage. Move the rest by hand now.`;
+      } else {
+        info = `Account suspended and ${moved} ${moved === 1 ? 'file' : 'files'} kept as evidence.`;
+      }
     }
+  } else if (decision === 'delete_account') {
+    if (report.target_type !== 'user')
+      return fail('VALIDATION', 'Only a reported account can be deleted here.');
+    const { error } = await supabase.rpc('admin_delete_account', {
+      p_user_id: report.target_id,
+      p_note: `Report ${report.id}`,
+    });
+    if (error) {
+      if (error.code === '42501') return fail('FORBIDDEN', 'Admin accounts can’t be deleted here.');
+      if (error.code === 'P0002') return fail('NOT_FOUND', 'That account no longer exists.');
+      console.error('resolveReport delete failed', { code: error.code, reportId: report.id });
+      return fail('INTERNAL', 'Couldn’t delete the account. Try again.');
+    }
+    await removeUserFiles(report.target_id);
   }
 
   const { error } = await supabase
@@ -141,7 +155,7 @@ export async function resolveReport(input: unknown): Promise<ActionResult<null>>
     .in('status', ['open', 'reviewing']);
   if (error) return fail('INTERNAL', 'Couldn’t update the report.');
   revalidatePath('/account/reports');
-  return warning ? fail('INTERNAL', warning) : ok(null);
+  return warning ? fail('INTERNAL', warning) : ok({ info });
 }
 
 /** Admins only: lift (or apply) a suspension from the suspended-accounts list. */
