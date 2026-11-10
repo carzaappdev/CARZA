@@ -74,6 +74,11 @@ export const REPORT_REASONS = [
   'misleading',
   'stolen',
   'other',
+  'harassment',
+  'intimate_image',
+  'child_safety',
+  'dangerous_driving',
+  'copyright',
 ] as const;
 export const REPORT_STATUSES = ['open', 'reviewing', 'resolved', 'dismissed'] as const;
 

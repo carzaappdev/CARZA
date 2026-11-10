@@ -820,6 +820,51 @@ export type Database = {
           },
         ];
       };
+      moderation_actions: {
+        Row: {
+          action: string;
+          admin_id: string | null;
+          created_at: string;
+          id: string;
+          note: string | null;
+          reason: Database['public']['Enums']['report_reason'] | null;
+          target_id: string | null;
+          target_type: Database['public']['Enums']['report_target'] | null;
+          target_user_id: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          action: string;
+          admin_id?: string | null;
+          created_at?: string;
+          id?: string;
+          note?: string | null;
+          reason?: Database['public']['Enums']['report_reason'] | null;
+          target_id?: string | null;
+          target_type?: Database['public']['Enums']['report_target'] | null;
+          target_user_id?: string | null;
+        };
+        Update: {
+          action?: string;
+          admin_id?: string | null;
+          created_at?: string;
+          id?: string;
+          note?: string | null;
+          reason?: Database['public']['Enums']['report_reason'] | null;
+          target_id?: string | null;
+          target_type?: Database['public']['Enums']['report_target'] | null;
+          target_user_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'moderation_actions_admin_id_fkey';
+            columns: ['admin_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       notifications: {
         Row: {
           created_at: string;
@@ -1136,6 +1181,7 @@ export type Database = {
           official: boolean;
           region: string | null;
           role: Database['public']['Enums']['app_role'];
+          suspended_at: string | null;
           updated_at: string;
           username: string;
         };
@@ -1152,6 +1198,7 @@ export type Database = {
           official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
+          suspended_at?: string | null;
           updated_at?: string;
           username: string;
         };
@@ -1167,6 +1214,7 @@ export type Database = {
           official?: boolean;
           region?: string | null;
           role?: Database['public']['Enums']['app_role'];
+          suspended_at?: string | null;
           updated_at?: string;
           username?: string;
         };
@@ -1620,7 +1668,26 @@ export type Database = {
     Functions: {
       accept_dealership_invitation: { Args: { p_token: string }; Returns: string };
       accept_invite: { Args: { p_username: string }; Returns: undefined };
+      admin_delete_account: { Args: { p_note?: string; p_user_id: string }; Returns: undefined };
+      admin_remove_content: {
+        Args: {
+          p_note?: string;
+          p_reason?: Database['public']['Enums']['report_reason'];
+          p_target_id: string;
+          p_target_type: Database['public']['Enums']['report_target'];
+        };
+        Returns: undefined;
+      };
       admin_remove_listing: { Args: { p_listing_id: string }; Returns: undefined };
+      admin_set_suspended: {
+        Args: {
+          p_action: string;
+          p_note?: string;
+          p_reason?: Database['public']['Enums']['report_reason'];
+          p_user_id: string;
+        };
+        Returns: undefined;
+      };
       apply_for_dealership: {
         Args: {
           p_address_line1: string;
@@ -1922,7 +1989,18 @@ export type Database = {
         | 'interior'
         | 'electronics'
         | 'care';
-      report_reason: 'scam' | 'spam' | 'offensive' | 'misleading' | 'stolen' | 'other';
+      report_reason:
+        | 'scam'
+        | 'spam'
+        | 'offensive'
+        | 'misleading'
+        | 'stolen'
+        | 'other'
+        | 'harassment'
+        | 'intimate_image'
+        | 'child_safety'
+        | 'dangerous_driving'
+        | 'copyright';
       report_status: 'open' | 'reviewing' | 'resolved' | 'dismissed';
       report_target: 'listing' | 'user' | 'message' | 'dealership' | 'post' | 'reel' | 'event';
       test_drive_status: 'requested' | 'confirmed' | 'declined' | 'cancelled' | 'completed';
@@ -2091,7 +2169,19 @@ export const Constants = {
         'electronics',
         'care',
       ],
-      report_reason: ['scam', 'spam', 'offensive', 'misleading', 'stolen', 'other'],
+      report_reason: [
+        'scam',
+        'spam',
+        'offensive',
+        'misleading',
+        'stolen',
+        'other',
+        'harassment',
+        'intimate_image',
+        'child_safety',
+        'dangerous_driving',
+        'copyright',
+      ],
       report_status: ['open', 'reviewing', 'resolved', 'dismissed'],
       report_target: ['listing', 'user', 'message', 'dealership', 'post', 'reel', 'event'],
       test_drive_status: ['requested', 'confirmed', 'declined', 'cancelled', 'completed'],
