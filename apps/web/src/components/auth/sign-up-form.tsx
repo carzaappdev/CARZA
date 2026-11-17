@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { MailCheckIcon } from 'lucide-react';
 import { authErrorMessage, fieldErrors, signUpSchema } from '@carza/shared';
 import { createClient } from '@/lib/supabase/browser';
@@ -8,6 +9,7 @@ import { Field, FormMessage, PasswordField, SubmitButton, useFocusFirstInvalid }
 
 /** `children` (the heading and social buttons) are hidden once the email is sent. */
 export function SignUpForm({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const formRef = useFocusFirstInvalid(errors);
   const [formError, setFormError] = useState<string | null>(null);
@@ -23,7 +25,7 @@ export function SignUpForm({ children }: { children: ReactNode }) {
     setPending(true);
 
     const { email, password, displayName } = parsed.data;
-    const { error } = await createClient().auth.signUp({
+    const { data, error } = await createClient().auth.signUp({
       email,
       password,
       // Carza's email template links to /auth/confirm. emailRedirectTo is the fallback for Supabase's
@@ -33,6 +35,8 @@ export function SignUpForm({ children }: { children: ReactNode }) {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=/welcome&from=signup`,
       },
     });
+    // With email confirmation switched off in Supabase, the account is signed in right away.
+    if (data.session) return router.push('/welcome');
     setPending(false);
     // "Already registered" gets the same response as success, so this form can't be used to test which
     // emails have accounts. (The API itself still leaks it; CAPTCHA on sign-up mitigates scripted probing.)
