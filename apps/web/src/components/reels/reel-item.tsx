@@ -33,20 +33,6 @@ import { publicStorageUrl } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { ReelComments } from './reel-comments';
 
-/** A random id this browser keeps, so a guest's views count once per reel. */
-function guestId() {
-  try {
-    let id = localStorage.getItem('carza:guest-id');
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem('carza:guest-id', id);
-    }
-    return id;
-  } catch {
-    return null;
-  }
-}
-
 /** Two taps closer together than this are a double-tap (like); a single tap waits this long to pause. */
 const DOUBLE_TAP_MS = 260;
 
@@ -148,11 +134,11 @@ export function ReelItem({
     return () => cancelAnimationFrame(frame);
   }, [active]);
 
-  // A view counts once the reel has been on screen for 2 seconds.
+  // A view counts once the reel has been on screen for 2 seconds. Only signed-in viewers count.
   useEffect(() => {
-    if (!active) return;
+    if (!active || !viewerId) return;
     const timer = window.setTimeout(() => {
-      void recordReelView({ reelId: reel.id, guestId: viewerId ? null : guestId() });
+      void recordReelView({ reelId: reel.id });
     }, 2000);
     return () => window.clearTimeout(timer);
   }, [active, reel.id, viewerId]);

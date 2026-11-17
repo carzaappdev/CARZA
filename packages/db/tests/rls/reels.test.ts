@@ -126,15 +126,18 @@ describe('reel comments and views', () => {
 
     await bob.client.rpc('record_reel_view', { p_reel_id: r.id });
     await bob.client.rpc('record_reel_view', { p_reel_id: r.id });
-    const guest = randomUUID();
-    await anon().rpc('record_reel_view', { p_reel_id: r.id, p_guest_id: guest });
-    await anon().rpc('record_reel_view', { p_reel_id: r.id, p_guest_id: guest });
+    // Guests can't add views, however many ids they make up.
+    const { error: guestError } = await anon().rpc('record_reel_view', {
+      p_reel_id: r.id,
+      p_guest_id: randomUUID(),
+    });
+    expect(guestError).not.toBeNull();
     const { data: viewed } = await anon()
       .from('reels')
       .select('view_count')
       .eq('id', r.id)
       .single();
-    expect(viewed?.view_count).toBe(2);
+    expect(viewed?.view_count).toBe(1);
     // Counters are never client-set.
     await alice.client
       .from('reels')

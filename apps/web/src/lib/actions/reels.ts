@@ -125,15 +125,12 @@ export async function loadReelComments(input: unknown): Promise<ActionResult<Pos
   }
 }
 
-/** Counts a view once per viewer (guests are identified by a random id their browser keeps). */
+/** Counts a view once per signed-in viewer. */
 export async function recordReelView(input: unknown): Promise<ActionResult<null>> {
   const parsed = recordReelViewSchema.safeParse(input);
   if (!parsed.success) return fail('VALIDATION', 'That request wasn’t valid.');
   const supabase = await createClient();
-  const { error } = await supabase.rpc('record_reel_view', {
-    p_reel_id: parsed.data.reelId,
-    p_guest_id: parsed.data.guestId ?? undefined,
-  });
+  const { error } = await supabase.rpc('record_reel_view', { p_reel_id: parsed.data.reelId });
   // Views are best-effort: a rate limit or a deleted reel isn't worth an error.
   if (error && error.code !== 'CZ429') console.error('recordReelView failed', { code: error.code });
   return ok(null);
