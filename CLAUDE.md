@@ -58,7 +58,10 @@ Launch strategy: **one metro first, then national (one country).** Never hardcod
 - `pnpm db:types` — regenerate Supabase types
 
 ## Environments
-- Supabase: `carza-dev` (connected via MCP, read-only) and `carza-prod` (never touched by Claude).
+- Supabase **dev**: `carza-dev`, ref `vlherwjxfgyenqdmbpsi` (us-west-1). Connected via MCP, read-only. Vercel Preview + Development use it.
+- Supabase **prod**: ref `surdkakmjgqlztzjozgr` (us-west-2). Real users. Vercel Production uses it. Claude never touches it unless Mahdy explicitly asks in that session.
+- Apply migrations to dev first (`supabase link --project-ref vlherwjxfgyenqdmbpsi && supabase db push`), then prod.
+- Note: prod's migration history was written with MCP-assigned versions, so `supabase db push` against prod would try to re-run old migrations. Repair prod's history before ever using the CLI on prod.
 - Vercel: Preview deploys per PR, Production from `main`.
 
 ## How to work
