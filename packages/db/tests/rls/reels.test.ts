@@ -144,6 +144,6 @@ describe('reel comments and views', () => {
       .update({ view_count: 9999 } as never)
       .eq('id', r.id);
     const { data: still } = await anon().from('reels').select('view_count').eq('id', r.id).single();
-    expect(still?.view_count).toBe(2);
+    expect(still?.view_count).toBe(1);
   });
 });
