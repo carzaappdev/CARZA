@@ -6,6 +6,7 @@ import { MessageCircleIcon, SendIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCount } from '@carza/shared';
 import { LikeButton } from './like-button';
+import { nativeShare } from '@/lib/native';
 
 /** Round, 44px-tall hit area around a small icon + count. */
 export const actionClass =
@@ -13,6 +14,7 @@ export const actionClass =
 
 async function share(postId: string) {
   const url = `${window.location.origin}/p/${postId}`;
+  if (await nativeShare({ url })) return;
   if (navigator.share) {
     try {
       await navigator.share({ url });

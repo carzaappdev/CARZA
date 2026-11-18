@@ -43,8 +43,9 @@ export default function PrivacyPage() {
             RSVPs.
           </li>
           <li>
-            <strong>Location you choose:</strong> a home ZIP code and event addresses. We do not
-            track your device’s location.
+            <strong>Location you choose:</strong> a home ZIP code and event addresses. If you tap
+            “Use my location”, your device’s approximate location is used once to find events near
+            you and is not stored. We do not track your device’s location.
           </li>
           <li>
             <strong>Reports and blocks</strong> you make, including a copy of the reported content.
@@ -59,6 +60,10 @@ export default function PrivacyPage() {
             pages requested, used for security and fixing problems.
           </li>
           <li>Reel view counts, so creators see how many people watched.</li>
+          <li>
+            If you turn on alerts, a push token from your browser or from Apple (in the iPhone app)
+            so we can send them to that device. Turning alerts off or signing out stops them.
+          </li>
           <li>
             Cookies and local storage that keep you signed in, remember your ZIP code and theme, and
             count reel views without an account. We do not use advertising or cross-site tracking
@@ -95,6 +100,7 @@ export default function PrivacyPage() {
             us.
           </li>
           <li>Google or Apple, if you choose to sign in with them.</li>
+          <li>Apple and your browser’s push service, only to deliver alerts you turned on.</li>
           <li>Authorities, when the law requires it or when needed to protect someone’s safety.</li>
           <li>A buyer or successor, if Carza is ever sold or merged, under this policy.</li>
         </ul>

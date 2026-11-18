@@ -3,3 +3,7 @@ supabase/.temp
 .claude
 CLAUDE.md
 SETUP.md
+
+# Generated native project files (Capacitor/Xcode)
+apps/ios/ios
+apps/ios/www

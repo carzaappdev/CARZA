@@ -32,6 +32,7 @@ import { deleteReel, recordReelView, setReelLiked } from '@/lib/actions/reels';
 import { publicStorageUrl } from '@/lib/storage';
 import { cn } from '@/lib/utils';
 import { ReelComments } from './reel-comments';
+import { haptic, nativeShare } from '@/lib/native';
 
 /** A random id this browser keeps, so a guest's views count once per reel. */
 function guestId() {
@@ -179,6 +180,7 @@ export function ReelItem({
     }
     const liked = force ?? !optimistic.liked;
     if (liked === optimistic.liked) return;
+    if (liked) haptic();
     startTransition(async () => {
       const next = { liked, count: Math.max(0, optimistic.count + (liked ? 1 : -1)) };
       setOptimistic(next);
@@ -242,6 +244,7 @@ export function ReelItem({
 
   async function share() {
     const url = `${window.location.origin}/reels/${reel.id}`;
+    if (await nativeShare({ url, title: `${reel.author.display_name} on Carza` })) return;
     try {
       if (navigator.share)
         await navigator.share({ url, title: `${reel.author.display_name} on Carza` });

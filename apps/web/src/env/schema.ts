@@ -19,6 +19,17 @@ export const serverSchema = z.object({
   // for production in the same change that adds the first sender.
   RESEND_API_KEY: z.string().startsWith('re_').optional(),
   EMAIL_FROM: z.string().min(3).optional(),
+  // iPhone app push (Apple Push Notification service). All three or none: without them the app's
+  // alerts are skipped and web push still works. The key is the .p8 file's text (\n escapes are fine).
+  APNS_KEY_ID: z
+    .string()
+    .regex(/^[A-Z0-9]{10}$/)
+    .optional(),
+  APNS_TEAM_ID: z
+    .string()
+    .regex(/^[A-Z0-9]{10}$/)
+    .optional(),
+  APNS_PRIVATE_KEY: z.string().includes('PRIVATE KEY').optional(),
 });
 
 /** Validates everything at once and throws a readable error listing every problem. */

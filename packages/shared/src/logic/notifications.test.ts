@@ -6,6 +6,7 @@ import {
   mutedPushTypes,
   notificationDataSchema,
   pushPreferencesSchema,
+  nativePushTokenSchema,
   pushSubscriptionSchema,
 } from './notifications';
 
@@ -91,5 +92,16 @@ describe('push', () => {
         keys: { ...keys, auth: 'x' },
       }).success,
     ).toBe(false);
+  });
+});
+
+describe('nativePushTokenSchema', () => {
+  it('accepts an APNs hex token and lowercases it', () => {
+    expect(nativePushTokenSchema.parse('AB'.repeat(32))).toBe('ab'.repeat(32));
+  });
+  it('rejects anything else', () => {
+    for (const t of ['', 'ab'.repeat(10), 'zz'.repeat(32), `${'a'.repeat(64)};drop`]) {
+      expect(nativePushTokenSchema.safeParse(t).success).toBe(false);
+    }
   });
 });

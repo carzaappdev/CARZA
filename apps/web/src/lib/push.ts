@@ -3,6 +3,7 @@ import { cache } from 'react';
 import webpush, { WebPushError } from 'web-push';
 import { describePush, notificationDataSchema } from '@carza/shared';
 import { clientEnv } from '@/env/client';
+import { sendApns } from '@/lib/apns';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // Older than this, an alert is stale (e.g. the dispatch ran late), so don't buzz the phone.
@@ -36,8 +37,8 @@ export async function vapidPublicKey() {
 }
 
 /**
- * Sends the push for one notification to every device its owner turned alerts on for, and forgets
- * devices the push service says are gone. The database calls this with no user session, which is why
+ * Sends the push for one notification to every device (browser or iPhone app) its owner turned alerts
+ * on for, and forgets devices the push service says are gone. The database calls this with no user session, which is why
  * it uses the secret-key client. It first claims the notification (pushed_at, once, only while fresh
  * and unread), so repeated or forged calls can't send anything twice or to anyone but the owner.
  */
@@ -58,20 +59,30 @@ export async function sendNotificationPush(notificationId: string) {
   if (!n) return { sent: 0 };
 
   const data = notificationDataSchema.parse(n.data);
-  const [{ data: actor }, { data: devices }, { data: prefs }] = await Promise.all([
-    data.actor_id
-      ? admin
-          .from('profiles')
-          .select('username, display_name')
-          .eq('id', data.actor_id)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
-    admin.from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('user_id', n.user_id),
-    admin.from('profile_private').select('push_muted').eq('user_id', n.user_id).maybeSingle(),
-  ]);
+  const [{ data: actor }, { data: devices }, { data: phones }, { data: prefs }] = await Promise.all(
+    [
+      data.actor_id
+        ? admin
+            .from('profiles')
+            .select('username, display_name')
+            .eq('id', data.actor_id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      admin
+        .from('push_subscriptions')
+        .select('id, endpoint, p256dh, auth')
+        .eq('user_id', n.user_id),
+      admin.from('native_push_tokens').select('token').eq('user_id', n.user_id),
+      admin.from('profile_private').select('push_muted').eq('user_id', n.user_id).maybeSingle(),
+    ],
+  );
   if (prefs?.push_muted.includes(n.type)) return { sent: 0 };
   const message = describePush(n.type, data, actor ?? null);
-  if (!message || !devices?.length) return { sent: 0 };
+  if (!message || (!devices?.length && !phones?.length)) return { sent: 0 };
+
+  // iPhone app alerts go through Apple; tokens Apple says are gone are forgotten.
+  const ios = await sendApns(phones?.map((p) => p.token) ?? [], message);
+  if (ios.gone.length) await admin.from('native_push_tokens').delete().in('token', ios.gone);
 
   const payload = JSON.stringify(message);
   // Push services want a way to reach the sender: the site's https URL (local dev runs on http).
@@ -84,7 +95,7 @@ export async function sendNotificationPush(notificationId: string) {
   };
   const gone: string[] = [];
   const results = await Promise.allSettled(
-    devices.map((d) =>
+    (devices ?? []).map((d) =>
       webpush
         .sendNotification(
           { endpoint: d.endpoint, keys: { p256dh: d.p256dh, auth: d.auth } },
@@ -102,5 +113,5 @@ export async function sendNotificationPush(notificationId: string) {
   if (gone.length) await admin.from('push_subscriptions').delete().in('id', gone);
   const failed = results.filter((r) => r.status === 'rejected').length - gone.length;
   if (failed > 0) console.error('push delivery failed', { notificationId, failed });
-  return { sent: results.length - failed - gone.length };
+  return { sent: results.length - failed - gone.length + ios.sent };
 }

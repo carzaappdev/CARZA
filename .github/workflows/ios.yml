@@ -1,0 +1,85 @@
+name: iOS app
+
+# Builds the Carza iPhone app (apps/ios) on GitHub's Mac runners, so nobody needs a Mac.
+# - Pull requests that touch apps/ios: an unsigned build, to catch breakage.
+# - Run workflow (Actions tab → iOS app → Run workflow) with "upload" ticked: signs with the App Store
+#   Connect API key and uploads to TestFlight. Needs these repository secrets:
+#   APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_P8 (the whole text of the .p8 file).
+
+on:
+  pull_request:
+    paths: ['apps/ios/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Sign and upload to TestFlight
+        type: boolean
+        default: true
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build${{ inputs.upload && ' and upload' || '' }}
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      PROJECT: apps/ios/ios/App/App.xcodeproj
+      # Each upload needs a higher build number than the last; the run number always grows.
+      BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter @carza/ios
+      - name: Use the newest Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -v beta | sort -V | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Sync Capacitor
+        working-directory: apps/ios
+        run: pnpm exec cap sync ios
+
+      - name: Unsigned build
+        if: ${{ !inputs.upload }}
+        run: |
+          set -o pipefail
+          xcodebuild build -project "$PROJECT" -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO CURRENT_PROJECT_VERSION="$BUILD_NUMBER" | tail -n 80
+
+      - name: Archive, sign and upload to TestFlight
+        if: ${{ inputs.upload }}
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          for v in APPLE_TEAM_ID ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do
+            [ -n "${!v}" ] || { echo "::error::Missing repository secret $v"; exit 1; }
+          done
+          KEY="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s\n' "$ASC_KEY_P8" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY"
+                -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          set -o pipefail
+          xcodebuild archive -project "$PROJECT" -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Carza.xcarchive" \
+            "${AUTH[@]}" DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            | tail -n 80
+          /usr/libexec/PlistBuddy -c "Add :teamID string $APPLE_TEAM_ID" apps/ios/ios/App/ExportOptions.plist
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Carza.xcarchive" \
+            -exportOptionsPlist apps/ios/ios/App/ExportOptions.plist -exportPath "$RUNNER_TEMP/export" \
+            "${AUTH[@]}" | tail -n 80
+          rm -f "$KEY"
+          echo "Uploaded build $BUILD_NUMBER. It shows in App Store Connect → TestFlight in about 10–30 minutes." >> "$GITHUB_STEP_SUMMARY"

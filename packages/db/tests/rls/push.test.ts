@@ -84,6 +84,39 @@ describe('push subscriptions', () => {
   });
 });
 
+const phone = () => crypto.randomUUID().replaceAll('-', '').repeat(2);
+
+describe('iPhone push tokens', () => {
+  it('are saved through the RPC, owner-only, and move to whoever signs in next', async () => {
+    const token = phone();
+    expect((await alice.client.rpc('save_native_push_token', { p_token: token })).error).toBeNull();
+    const { data: theirs } = await bob.client
+      .from('native_push_tokens')
+      .select('id')
+      .eq('token', token);
+    expect(theirs).toHaveLength(0);
+
+    await bob.client.rpc('save_native_push_token', { p_token: token });
+    const { data: row } = await admin
+      .from('native_push_tokens')
+      .select('user_id')
+      .eq('token', token)
+      .single();
+    expect(row?.user_id).toBe(bob.id);
+  });
+
+  it("can't be inserted directly, saved signed out, or be anything but hex", async () => {
+    const { error: insertErr } = await alice.client
+      .from('native_push_tokens')
+      .insert({ user_id: bob.id, token: phone() });
+    expect(insertErr).not.toBeNull();
+    expect((await anon().rpc('save_native_push_token', { p_token: phone() })).error).not.toBeNull();
+    expect(
+      (await alice.client.rpc('save_native_push_token', { p_token: 'not-a-token' })).error,
+    ).not.toBeNull();
+  });
+});
+
 describe('push signing keys', () => {
   it('are never readable or writable by users', async () => {
     await admin

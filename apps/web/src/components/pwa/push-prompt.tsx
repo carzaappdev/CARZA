@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { BellRingIcon, XIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { currentSubscription, enablePush, pushSupport } from '@/lib/push-client';
+import { enablePush, pushBlocked, pushIsOn, pushSupport } from '@/lib/push-client';
 
 const DISMISSED = 'carza:push-prompt-dismissed';
 
@@ -19,9 +19,9 @@ export function PushPrompt({ publicKey }: { publicKey: string | null }) {
     } catch {
       // Storage blocked: still offer it.
     }
-    if (pushSupport(publicKey) !== 'supported' || Notification.permission === 'denied') return;
-    void currentSubscription().then((sub) => {
-      if (!sub || Notification.permission !== 'granted') setShow(true);
+    if (pushSupport(publicKey) !== 'supported') return;
+    void Promise.all([pushBlocked(), pushIsOn()]).then(([blocked, on]) => {
+      if (!blocked && !on) setShow(true);
     });
   }, [publicKey]);
 
