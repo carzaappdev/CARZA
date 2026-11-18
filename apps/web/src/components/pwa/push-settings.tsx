@@ -6,9 +6,9 @@ import { PUSH_CATEGORIES, type PushCategory } from '@carza/shared';
 import { Switch } from '@/components/ui/switch';
 import { savePushPreferences } from '@/lib/actions/push';
 import {
-  currentSubscription,
   disablePush,
   enablePush,
+  pushIsOn,
   pushSupport,
   type PushSupport,
 } from '@/lib/push-client';
@@ -35,9 +35,7 @@ export function PushSettings({
 
   useEffect(() => {
     if (support !== 'supported') return;
-    void currentSubscription().then((sub) =>
-      setEnabled(Boolean(sub) && Notification.permission === 'granted'),
-    );
+    void pushIsOn().then(setEnabled);
   }, [support]);
 
   const toggleDevice = (on: boolean) =>

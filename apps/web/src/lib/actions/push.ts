@@ -3,6 +3,7 @@
 import {
   fail,
   mutedPushTypes,
+  nativePushTokenSchema,
   ok,
   pushPreferencesSchema,
   pushSubscriptionSchema,
@@ -29,6 +30,42 @@ export async function savePushSubscription(input: unknown): Promise<ActionResult
   if (error) {
     console.error('savePushSubscription failed', { code: error.code, userId: user.id });
     return fail('INTERNAL', 'Couldn’t turn on alerts. Try again.');
+  }
+  return ok(null);
+}
+
+/** Turns push on for this iPhone (the Carza app): saves its APNs token for the signed-in user. */
+export async function saveNativePushToken(input: unknown): Promise<ActionResult<null>> {
+  const parsed = nativePushTokenSchema.safeParse(input);
+  if (!parsed.success) return fail('VALIDATION', 'This phone’s push setup wasn’t valid.');
+  const user = await getUser();
+  if (!user) return fail('UNAUTHENTICATED', 'Sign in to turn on alerts.');
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('save_native_push_token', { p_token: parsed.data });
+  if (error) {
+    console.error('saveNativePushToken failed', { code: error.code, userId: user.id });
+    return fail('INTERNAL', 'Couldn’t turn on alerts. Try again.');
+  }
+  return ok(null);
+}
+
+/** Turns push off for this iPhone. RLS limits the delete to the viewer's own phones. */
+export async function removeNativePushToken(input: unknown): Promise<ActionResult<null>> {
+  const parsed = nativePushTokenSchema.safeParse(input);
+  if (!parsed.success) return fail('VALIDATION', 'That request wasn’t valid.');
+  const user = await getUser();
+  if (!user) return fail('UNAUTHENTICATED', 'Sign in first.');
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('native_push_tokens')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('token', parsed.data);
+  if (error) {
+    console.error('removeNativePushToken failed', { code: error.code, userId: user.id });
+    return fail('INTERNAL', 'Couldn’t turn off alerts. Try again.');
   }
   return ok(null);
 }

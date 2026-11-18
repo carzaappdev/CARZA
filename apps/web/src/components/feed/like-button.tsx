@@ -9,6 +9,7 @@ import { formatCount } from '@carza/shared';
 import { setPostLiked } from '@/lib/actions/posts';
 import { cn } from '@/lib/utils';
 import { actionClass } from './post-actions';
+import { haptic } from '@/lib/native';
 
 export function LikeButton({
   postId,
@@ -67,6 +68,7 @@ export function LikeButton({
             count: Math.max(0, optimistic.count + (optimistic.liked ? -1 : 1)),
           };
           setOptimistic(next);
+          if (next.liked) haptic();
           const result = await setPostLiked({ postId, liked: next.liked });
           if (!result.ok) {
             toast.error(result.error.message);

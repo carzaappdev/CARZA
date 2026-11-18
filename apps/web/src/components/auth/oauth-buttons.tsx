@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { authErrorMessage } from '@carza/shared';
+import { isNativeApp, NATIVE_AUTH_REDIRECT, openInAppBrowser } from '@/lib/native';
 import { createClient } from '@/lib/supabase/browser';
 import { FormMessage } from './fields';
 import { AppleIcon, GoogleIcon } from './provider-icons';
@@ -26,6 +27,8 @@ const PROVIDERS = [
   },
 ] as const;
 
+const noop = () => () => {};
+
 /** Renders only the providers switched on in Supabase (see enabledOAuthProviders); nothing if none are. */
 export function OAuthButtons({
   next,
@@ -34,20 +37,33 @@ export function OAuthButtons({
   next: string;
   providers: readonly (typeof PROVIDERS)[number]['id'][];
 }) {
-  const shown = PROVIDERS.filter((p) => providers.includes(p.id));
+  const native = useSyncExternalStore(noop, isNativeApp, () => false);
+  // App Store rule 4.8: an app that offers Google sign-in must offer Sign in with Apple too.
+  const shown = PROVIDERS.filter(
+    (p) =>
+      providers.includes(p.id) && !(native && p.id === 'google' && !providers.includes('apple')),
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
 
   async function signIn(provider: (typeof PROVIDERS)[number]['id']) {
     setPending(provider);
     setError(null);
-    const { error } = await createClient().auth.signInWithOAuth({
+    // `next` is already validated by safeNextPath on the server; the callback re-validates it.
+    const query = `?next=${encodeURIComponent(next)}`;
+    // In the iPhone app the provider page opens in the in-app Safari sheet (Google refuses embedded
+    // web views) and comes back through the app's URL scheme; NativeBridge finishes it here.
+    const { data, error } = await createClient().auth.signInWithOAuth({
       provider,
-      // `next` is already validated by safeNextPath on the server; the callback re-validates it.
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
+      options: native
+        ? { redirectTo: `${NATIVE_AUTH_REDIRECT}${query}`, skipBrowserRedirect: true }
+        : { redirectTo: `${window.location.origin}/auth/callback${query}` },
     });
+    if (!error && native && data.url) {
+      await openInAppBrowser(data.url).catch(() => setError(authErrorMessage(undefined)));
+      setPending(null);
+      return;
+    }
     if (error) {
       setError(authErrorMessage(error.code));
       setPending(null);

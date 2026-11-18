@@ -140,6 +140,12 @@ export const pushSubscriptionSchema = z.object({
   }),
 });
 
+/** An iPhone app's APNs device token (hex; the app sends it as Apple gives it). */
+export const nativePushTokenSchema = z
+  .string()
+  .regex(/^[0-9a-fA-F]{64,200}$/)
+  .transform((t) => t.toLowerCase());
+
 /**
  * The push alert for a notification: the same words as the in-app list, with the actor's name in
  * front. `tag` makes a newer alert about the same post, reel or event replace the older one.

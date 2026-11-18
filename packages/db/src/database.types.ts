@@ -817,6 +817,36 @@ export type Database = {
           },
         ];
       };
+      native_push_tokens: {
+        Row: {
+          created_at: string;
+          id: string;
+          token: string;
+          user_id: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          created_at?: string;
+          id?: string;
+          token: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          token?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'native_push_tokens_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       notifications: {
         Row: {
           created_at: string;
@@ -1738,6 +1768,7 @@ export type Database = {
         Args: { p_confirm: boolean; p_note?: string; p_request_id: string; p_time?: string };
         Returns: undefined;
       };
+      save_native_push_token: { Args: { p_token: string }; Returns: undefined };
       save_push_subscription: {
         Args: { p_auth: string; p_endpoint: string; p_p256dh: string };
         Returns: undefined;
